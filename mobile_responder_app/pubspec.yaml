@@ -1,0 +1,48 @@
+name: mobile_responder_app
+description: "SREA Responder App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Shared package
+  srea_shared:
+    path: ../srea_shared
+
+  # UI
+  google_fonts: ^8.0.2
+  cupertino_icons: ^1.0.8
+  video_player: ^2.11.1
+
+  # Networking & Storage
+  dio: ^5.9.2
+  flutter_secure_storage: ^10.0.0
+  shared_preferences: ^2.5.5
+
+  # Location & Maps
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+
+  # Utilities
+  url_launcher: ^6.3.2
+  intl: ^0.20.2
+  image_picker: ^1.2.1
+  path_provider: ^2.1.0
+  cross_file: ^0.3.4+1
+  flutter_image_compress: ^2.1.0
+  provider: ^6.1.5+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

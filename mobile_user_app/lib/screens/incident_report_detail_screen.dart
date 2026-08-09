@@ -87,7 +87,9 @@ class _IncidentReportDetailScreenState
     }
   }
 
+  // ─── ✅ FIXED: _formatDateTime now converts to local time ──────────
   String _formatDateTime(DateTime date) {
+    final localDate = date.toLocal();
     const months = [
       'Jan',
       'Feb',
@@ -102,11 +104,11 @@ class _IncidentReportDetailScreenState
       'Nov',
       'Dec',
     ];
-    final month = months[date.month - 1];
-    final day = date.day;
-    final year = date.year;
-    int hour = date.hour;
-    final minute = date.minute.toString().padLeft(2, '0');
+    final month = months[localDate.month - 1];
+    final day = localDate.day;
+    final year = localDate.year;
+    int hour = localDate.hour;
+    final minute = localDate.minute.toString().padLeft(2, '0');
     final amPm = hour >= 12 ? 'PM' : 'AM';
     if (hour > 12) hour -= 12;
     if (hour == 0) hour = 12;
@@ -119,6 +121,8 @@ class _IncidentReportDetailScreenState
         return SreaColors.warning;
       case 'in_progress':
       case 'responding':
+        return SreaColors.high;
+      case 'escalated': // ✅ ADDED
         return SreaColors.high;
       case 'resolved':
         return SreaColors.success;
@@ -134,6 +138,8 @@ class _IncidentReportDetailScreenState
       case 'responding':
       case 'in_progress':
         return 'IN PROGRESS';
+      case 'escalated': // ✅ ADDED
+        return 'ESCALATED';
       case 'resolved':
         return 'RESOLVED';
       default:
@@ -301,10 +307,99 @@ class _IncidentReportDetailScreenState
               const SizedBox(height: 12),
             ],
 
-            // ─── Metadata Row ──────────────────────────────────────────
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
+            // ─── Escalation Banner ──────────────────────────────────────
+            if (report.status.toLowerCase() == 'escalated') ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: SreaColors.highBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: SreaColors.high.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: SreaColors.high,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Report Escalated',
+                          style: TextStyle(
+                            color: SreaColors.high,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (report.escalationReason != null &&
+                        report.escalationReason!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        report.escalationReason!,
+                        style: SreaText.bodySmall(
+                          context,
+                        ).copyWith(color: SreaColors.textSecondary),
+                      ),
+                    ],
+                    if (report.escalatedByName != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Escalated by: ${report.escalatedByName}',
+                        style: SreaText.label(
+                          context,
+                        ).copyWith(color: SreaColors.textHint, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            // ─── Duplicate Banner ──────────────────────────────────────
+            if (report.isPotentialDuplicate &&
+                report.status.toLowerCase() != 'resolved' &&
+                report.status.toLowerCase() != 'rejected')
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: SreaColors.warning.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: SreaColors.warning.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: SreaColors.warning,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'This report may be a duplicate of a nearby incident. The response team is reviewing it.',
+                        style: SreaText.bodySmall(context).copyWith(
+                          color: SreaColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // ─── Metadata Column (vertical stacking) ───────────────────
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Reporter
                 Row(
@@ -324,26 +419,51 @@ class _IncidentReportDetailScreenState
                     ),
                   ],
                 ),
-                // Location
+                const SizedBox(height: 4),
+                // ─── Location – Stacked ────────────────────────────────
                 Row(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 16,
-                      color: SreaColors.textHint,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: SreaColors.textHint,
+                      ),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      '${report.barangay}${report.address.isNotEmpty ? " • ${report.address}" : ""}',
-                      style: SreaText.bodySmall(
-                        context,
-                      ).copyWith(color: SreaColors.textSecondary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width - 80,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            report.barangay,
+                            style: SreaText.bodySmall(context).copyWith(
+                              color: SreaColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (report.address.isNotEmpty)
+                            Text(
+                              report.address,
+                              style: SreaText.bodySmall(context).copyWith(
+                                color: SreaColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 4),
                 // Reported At
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -363,7 +483,8 @@ class _IncidentReportDetailScreenState
                   ],
                 ),
                 // Assigned To (if any)
-                if (report.assignedToName != null)
+                if (report.assignedToName != null) ...[
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -381,6 +502,7 @@ class _IncidentReportDetailScreenState
                       ),
                     ],
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -750,10 +872,14 @@ class _IncidentReportDetailScreenState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: SreaColors.success.withOpacity(0.08),
+                  color: report.status.toLowerCase() == 'rejected'
+                      ? SreaColors.error.withOpacity(0.08)
+                      : SreaColors.success.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: SreaColors.success.withOpacity(0.3),
+                    color: report.status.toLowerCase() == 'rejected'
+                        ? SreaColors.error.withOpacity(0.3)
+                        : SreaColors.success.withOpacity(0.3),
                   ),
                 ),
                 child: Text(

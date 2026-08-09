@@ -16,7 +16,8 @@ class IncidentReport {
   final String? assignedToId;
   final String? responderNotes;
   final String? escalationReason;
-  final String? escalatedBy;
+  final String? escalatedBy; // User ID of who escalated
+  final String? escalatedByName; // ✅ NEW: Name of who escalated
   final String? escalatedAt;
   final String? resolutionNotes;
   final DateTime? resolvedAt;
@@ -40,6 +41,7 @@ class IncidentReport {
     this.responderNotes,
     this.escalationReason,
     this.escalatedBy,
+    this.escalatedByName, // ✅ NEW
     this.escalatedAt,
     this.resolutionNotes,
     this.resolvedAt,
@@ -65,6 +67,16 @@ class IncidentReport {
       }
     }
 
+    // ✅ Parse escalated by info
+    String? escalatedByName;
+    if (json['escalated_by'] != null) {
+      if (json['escalated_by'] is Map<String, dynamic>) {
+        escalatedByName = json['escalated_by']['name']?.toString();
+      } else {
+        escalatedByName = json['escalated_by_name']?.toString();
+      }
+    }
+
     return IncidentReport(
       id: json['uuid'] ?? json['id'].toString(),
       type: json['type'] ?? 'Emergency',
@@ -87,6 +99,7 @@ class IncidentReport {
       responderNotes: json['responder_notes'],
       escalationReason: json['escalation_reason'],
       escalatedBy: json['escalated_by']?.toString(),
+      escalatedByName: escalatedByName, // ✅ NEW
       escalatedAt: json['escalated_at'],
       resolutionNotes: json['resolution_notes'],
       resolvedAt: json['resolved_at'] != null
@@ -123,6 +136,7 @@ class IncidentReport {
       'responder_notes': responderNotes,
       'escalation_reason': escalationReason,
       'escalated_by': escalatedBy,
+      'escalated_by_name': escalatedByName, // ✅ NEW
       'escalated_at': escalatedAt,
       'resolution_notes': resolutionNotes,
       'resolved_at': resolvedAt?.toIso8601String(),
@@ -148,6 +162,7 @@ class IncidentReport {
     String? responderNotes,
     String? escalationReason,
     String? escalatedBy,
+    String? escalatedByName, // ✅ NEW
     String? escalatedAt,
     String? resolutionNotes,
     DateTime? resolvedAt,
@@ -171,6 +186,7 @@ class IncidentReport {
       responderNotes: responderNotes ?? this.responderNotes,
       escalationReason: escalationReason ?? this.escalationReason,
       escalatedBy: escalatedBy ?? this.escalatedBy,
+      escalatedByName: escalatedByName ?? this.escalatedByName, // ✅ NEW
       escalatedAt: escalatedAt ?? this.escalatedAt,
       resolutionNotes: resolutionNotes ?? this.resolutionNotes,
       resolvedAt: resolvedAt ?? this.resolvedAt,

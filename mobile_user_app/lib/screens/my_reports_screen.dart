@@ -81,7 +81,8 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       return status == 'pending' ||
           status == 'responding' ||
           status == 'in_progress' ||
-          status == 'active';
+          status == 'active' ||
+          status == 'escalated'; // ✅ ADDED – Escalated goes in Active tab
     }).toList();
   }
 
@@ -101,6 +102,8 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       case 'in_progress':
       case 'active':
         return 'In Progress';
+      case 'escalated': // ✅ ADDED
+        return 'Escalated';
       case 'resolved':
         return 'Resolved';
       case 'rejected':
@@ -117,6 +120,8 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       case 'responding':
       case 'in_progress':
       case 'active':
+        return SreaColors.high;
+      case 'escalated': // ✅ ADDED – same color as In Progress
         return SreaColors.high;
       case 'resolved':
         return SreaColors.success;
@@ -135,6 +140,8 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       case 'in_progress':
       case 'active':
         return SreaColors.highBg;
+      case 'escalated': // ✅ ADDED
+        return SreaColors.highBg;
       case 'resolved':
         return SreaColors.lowBg;
       case 'rejected':
@@ -144,7 +151,9 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     }
   }
 
+  // ─── ✅ FIXED: _formatDate now converts to local time ─────────────
   String _formatDate(DateTime date) {
+    final localDate = date.toLocal();
     const months = [
       'Jan',
       'Feb',
@@ -159,7 +168,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       'Nov',
       'Dec',
     ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return '${months[localDate.month - 1]} ${localDate.day}, ${localDate.year}';
   }
 
   @override
@@ -170,7 +179,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
         children: [
           // ─── Custom Tabs ─────────────────────────────────────────────
           Container(
-            color: SreaColors.surface, // ✅ White background
+            color: SreaColors.surface,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
@@ -183,8 +192,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                         border: Border(
                           bottom: BorderSide(
                             color: _currentTabIndex == 0
-                                ? SreaColors
-                                      .primary // ✅ Blue underline
+                                ? SreaColors.primary
                                 : Colors.transparent,
                             width: 2.5,
                           ),
@@ -195,8 +203,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: _currentTabIndex == 0
-                              ? SreaColors
-                                    .primary // ✅ Blue text when selected
+                              ? SreaColors.primary
                               : SreaColors.textSecondary,
                           fontWeight: _currentTabIndex == 0
                               ? FontWeight.w700
@@ -216,8 +223,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                         border: Border(
                           bottom: BorderSide(
                             color: _currentTabIndex == 1
-                                ? SreaColors
-                                      .primary // ✅ Blue underline
+                                ? SreaColors.primary
                                 : Colors.transparent,
                             width: 2.5,
                           ),
@@ -228,8 +234,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: _currentTabIndex == 1
-                              ? SreaColors
-                                    .primary // ✅ Blue text when selected
+                              ? SreaColors.primary
                               : SreaColors.textSecondary,
                           fontWeight: _currentTabIndex == 1
                               ? FontWeight.w700
@@ -350,6 +355,8 @@ class _ReportCard extends StatelessWidget {
       case 'in_progress':
       case 'active':
         return 'In Progress';
+      case 'escalated': // ✅ ADDED
+        return 'Escalated';
       case 'resolved':
         return 'Resolved';
       case 'rejected':
@@ -366,6 +373,8 @@ class _ReportCard extends StatelessWidget {
       case 'responding':
       case 'in_progress':
       case 'active':
+        return SreaColors.high;
+      case 'escalated': // ✅ ADDED
         return SreaColors.high;
       case 'resolved':
         return SreaColors.success;
@@ -384,6 +393,8 @@ class _ReportCard extends StatelessWidget {
       case 'in_progress':
       case 'active':
         return SreaColors.highBg;
+      case 'escalated': // ✅ ADDED
+        return SreaColors.highBg;
       case 'resolved':
         return SreaColors.lowBg;
       case 'rejected':
@@ -394,6 +405,7 @@ class _ReportCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
+    final localDate = date.toLocal();
     const months = [
       'Jan',
       'Feb',
@@ -408,7 +420,7 @@ class _ReportCard extends StatelessWidget {
       'Nov',
       'Dec',
     ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return '${months[localDate.month - 1]} ${localDate.day}, ${localDate.year}';
   }
 
   @override
@@ -416,6 +428,8 @@ class _ReportCard extends StatelessWidget {
     final statusLabel = _getStatusLabel(report.status);
     final statusColor = _getStatusColor(report.status);
     final statusBgColor = _getStatusBgColor(report.status);
+    final isRejected = report.status.toLowerCase() == 'rejected';
+    final showDuplicate = report.isPotentialDuplicate && !isRejected;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -445,12 +459,14 @@ class _ReportCard extends StatelessWidget {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 8,
                   height: 8,
+                  margin: const EdgeInsets.only(top: 4),
                   decoration: BoxDecoration(
                     color: statusColor,
                     shape: BoxShape.circle,
@@ -515,6 +531,7 @@ class _ReportCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -535,6 +552,41 @@ class _ReportCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (showDuplicate) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: SreaColors.warning.withOpacity(0.15),
+                          borderRadius: SreaRadius.pill,
+                          border: Border.all(
+                            color: SreaColors.warning.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              size: 12,
+                              color: SreaColors.warning,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Similar nearby',
+                              style: SreaText.label(context).copyWith(
+                                color: SreaColors.warning,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       'View →',

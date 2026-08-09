@@ -1157,6 +1157,42 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                   ),
                 ),
 
+              // ─── Escalated by (if escalated) ──────────────────────────
+              if (_incident.status == 'Escalated' &&
+                  _incident.escalatedByName != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: SreaColors.highBg,
+                    borderRadius: SreaRadius.pill,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.person_outline,
+                        size: 14,
+                        color: SreaColors.high,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Escalated by: ${_incident.escalatedByName}',
+                        style: SreaText.label(context).copyWith(
+                          color: SreaColors.high,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
               // ─── Row: Type + Status ──────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1671,8 +1707,20 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
     );
   }
 
-  String _formatDate(DateTime date) =>
-      '${_monthAbbr(date.month)} ${date.day}, ${date.year}';
+  // ─── ✅ FIXED: _formatDate now includes time and converts to local ───
+  String _formatDate(DateTime date) {
+    final localDate = date.toLocal();
+    final month = _monthAbbr(localDate.month);
+    final day = localDate.day;
+    final year = localDate.year;
+    int hour = localDate.hour;
+    final minute = localDate.minute.toString().padLeft(2, '0');
+    final amPm = hour >= 12 ? 'PM' : 'AM';
+    if (hour > 12) hour -= 12;
+    if (hour == 0) hour = 12;
+    return '$month $day, $year at $hour:$minute $amPm';
+  }
+
   String _monthAbbr(int m) => const [
     'Jan',
     'Feb',

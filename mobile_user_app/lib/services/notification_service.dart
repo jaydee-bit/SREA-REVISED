@@ -132,6 +132,8 @@ class NotificationService {
       case 'in_progress':
       case 'active':
         return 'In Progress';
+      case 'escalated': // ✅ ADDED
+        return 'Escalated';
       case 'resolved':
         return 'Resolved';
       case 'rejected':
@@ -188,12 +190,24 @@ class NotificationService {
           if (lastStatus == null || lastStatus != currentStatus) {
             // ✅ Use display-friendly status
             final displayStatus = _getDisplayStatus(currentStatus);
+
+            // If escalated and has reason, include it
+            String bodyText =
+                'Your report in ${incident.barangay} is now: $displayStatus';
+            if (currentStatus.toLowerCase() == 'escalated' &&
+                incident.escalationReason != null &&
+                incident.escalationReason!.isNotEmpty) {
+              bodyText =
+                  'Your report in ${incident.barangay} was escalated: ${incident.escalationReason}';
+            }
+
             final notification = AppNotification(
               id: 'incident_status_${id}_${DateTime.now().millisecondsSinceEpoch}',
               type: 'incident_status',
-              title: 'Incident Status Updated',
-              body:
-                  'Your report in ${incident.barangay} is now: $displayStatus',
+              title: currentStatus.toLowerCase() == 'escalated'
+                  ? 'Report Escalated'
+                  : 'Incident Status Updated',
+              body: bodyText,
               timestamp: DateTime.now(),
               isRead: false,
               payload: {

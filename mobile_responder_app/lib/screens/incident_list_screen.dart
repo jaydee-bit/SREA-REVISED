@@ -40,12 +40,12 @@ class _IncidentListBodyState extends State<_IncidentListBody> {
   String? _filterBarangay;
 
   final List<String> _statusOptions = [
-    'All',
     'Active',
     'Pending',
     'Responding',
     'Resolved',
     'Rejected',
+    'Escalated'
   ];
 
   final List<String> _barangayOptions = [
@@ -386,7 +386,7 @@ class _IncidentCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '⚠️ ${incident.potentialDuplicateCount} nearby',
+                              ' ${incident.potentialDuplicateCount} nearby',
                               style: SreaText.label(context).copyWith(
                                 color: SreaColors.warning,
                                 fontSize: 9,
@@ -541,8 +541,12 @@ class _IncidentCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) =>
-      '${_monthAbbr(date.month)} ${date.day}, ${date.year}';
+  // ─── ✅ FIXED: _formatDate now converts to local time ─────────────
+  String _formatDate(DateTime date) {
+    final localDate = date.toLocal();
+    return '${_monthAbbr(localDate.month)} ${localDate.day}, ${localDate.year}';
+  }
+
   String _monthAbbr(int m) => const [
     'Jan',
     'Feb',

@@ -1,7 +1,7 @@
 # SREA – Complete System Memory File (Resident App + Responder App)
 
-> **Last updated:** August 9, 2026  
-> **Version:** 3.2  
+> **Last updated:** August 10, 2026  
+> **Version:** 3.3  
 > **Purpose:** Full project context for the SREA emergency reporting system. Includes all architectural decisions, code changes, database migrations, UI/UX improvements, issue resolutions, and next steps. Use this to restore context instantly after a chat reset.
 
 ---
@@ -19,7 +19,7 @@ Developed for the MDRRMO (Municipal Disaster Risk Reduction and Management Offic
 
 ---
 
-## 2. Current Status (August 9, 2026)
+## 2. Current Status (August 10, 2026)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -29,16 +29,20 @@ Developed for the MDRRMO (Municipal Disaster Risk Reduction and Management Offic
 | **Resident App – Search Location** | ✅ Complete | Testing feature to search addresses outside San Rafael. |
 | **Resident App – Notifications** | ✅ Complete | In‑app notifications with polling (10s) and foreground checks. Red dot with persistent read status. |
 | **Resident App – Notification Bell** | ✅ Complete | Bell icon with red dot in AppBar; sidebar entry removed. |
-| **Resident App – My Reports** | ✅ Complete | Tabs (Active/Resolved) with white background and blue underline. |
+| **Resident App – My Reports** | ✅ Complete | Tabs (Active/Resolved) with white background and blue underline. **Escalated** reports now appear in Active tab. |
+| **Resident App – Escalation Display** | ✅ Complete | Shows escalation banner with reason and escalator name in detail screen. |
 | **Resident App – Emergency Call** | ✅ Complete | Confirmation dialog → opens dialer with prefilled number. |
 | **Backend – Incident Storage** | ✅ Complete | `photo_path` and `video_path` saved; `reporter_name` stored. |
 | **Backend – API Endpoints** | ✅ Complete | All public and authenticated endpoints working. |
+| **Backend – Duplicate Detection** | ✅ Complete | 30‑minute time window; Haversine formula for distance calculation. |
+| **Backend – Escalation Support** | ✅ Complete | `escalated_by` relationship loaded; `escalation_reason` stored. |
 | **Android Manifest** | ✅ Complete | Cleartext traffic allowed; map intents configured. |
-| **Responder App – Incident List** | ✅ Complete | Photo thumbnail with video indicator. |
-| **Responder App – Incident Detail** | ✅ Complete | Photo + video display, full‑screen photo viewer. |
+| **Responder App – Incident List** | ✅ Complete | Photo thumbnail with video indicator; duplicate badge. |
+| **Responder App – Incident Detail** | ✅ Complete | Photo + video display, full‑screen photo viewer. **Escalated by** display. |
 | **Responder App – Notifications** | ✅ Complete | Real incidents as notifications, read status persisted. |
-| **Responder App – Actions** | ✅ Complete | Respond, Resolve (with validation), Reassign, Reject, Notes. |
+| **Responder App – Actions** | ✅ Complete | Respond, Resolve (with validation), Reassign, Reject, Notes. **Escalated** in filter. |
 | **UI Consistency** | ✅ Complete | Badges, icons, 12‑hour time, unified detail screens. |
+| **Time Zone** | ✅ Complete | All dates display in Philippines Time (UTC+8) via `.toLocal()`. |
 | **Push Notifications (FCM)** | ⏳ Planned | Not started – in roadmap for future implementation. |
 | **Admin Panel** | ⏳ Planned | Future feature. |
 | **Live Deployment** | ⏳ Pending | Backend and apps ready for deployment. |
@@ -78,23 +82,26 @@ Developed for the MDRRMO (Municipal Disaster Risk Reduction and Management Offic
 │  - No authentication          │          │  - Sanctum token auth        │
 │  - Starts at HomeScreen       │          │  - HomeScreen with bottom nav│
 │  - Sidebar navigation         │          │  - Incident list (filterable)│
-│  - Anonymous reporting        │          │  - Incident detail with      │
-│    (selfie + video required)  │          │    action buttons            │
-│  - Soft selfie verification   │          │  - Resolve dialog with:      │
-│  - Daily limit 3/day          │          │    • Incident Type dropdown  │
-│  - Local history (UUIDs)      │          │    • Description (required)  │
-│  - Notifications with updates │          │    • Resolution Notes        │
-│  - OpenStreetMap + polygons   │          │    • Reporter Name (optional)│
-│  - "Open in Maps" button      │          │  - Reject dialog (Admin only)│
-│  - Search location for test   │          │  - "Potential Duplicate"     │
-│  - Consistent UI titles       │          │    badge (visual hint)       │
-│  - Cards with accent icons    │          │  - Permission checks:        │
-│  - Unified badge styling      │          │    • Resolve only for        │
-│  - Tappable selfie photo      │          │      assigned responder      │
-│  - 12‑hour time format        │          │    • Reject only for Admin   │
-│  - Metadata rows with icons   │          │  - Photo + video display      │
-│  - Notification bell + red dot│          │                               │
-│  - My Reports tabs (Active/Resolved) │    │                               │
+│  - Anonymous reporting        │          │    with Escalated filter     │
+│    (selfie + video required)  │          │  - Incident detail with      │
+│  - Soft selfie verification   │          │    action buttons            │
+│  - Daily limit 3/day          │          │  - Resolve dialog with:      │
+│  - Local history (UUIDs)      │          │    • Incident Type dropdown  │
+│  - Notifications with updates │          │    • Description (required)  │
+│  - OpenStreetMap + polygons   │          │    • Resolution Notes        │
+│  - "Open in Maps" button      │          │    • Reporter Name (optional)│
+│  - Search location for test   │          │  - Reject dialog (Admin only)│
+│  - Consistent UI titles       │          │  - "Potential Duplicate"     │
+│  - Cards with accent icons    │          │    badge (visual hint)       │
+│  - Unified badge styling      │          │  - Escalated by display      │
+│  - Tappable selfie photo      │          │  - Permission checks:        │
+│  - 12‑hour time format        │          │    • Resolve only for        │
+│  - Metadata rows with icons   │          │      assigned responder      │
+│  - Notification bell + red dot│          │    • Reject only for Admin   │
+│  - My Reports tabs:           │          │  - Photo + video display      │
+│    Active (Pending, In Progress, Escalated) │                         │
+│    Resolved (Resolved, Rejected)          │                               │
+│  - Escalation banner with reason          │                               │
 └──────────────────────────────┘          └──────────────────────────────┘
 ```
 
@@ -127,7 +134,7 @@ Developed for the MDRRMO (Municipal Disaster Risk Reduction and Management Offic
 
 ## 5. Database Schema – Incidents Table (Key Columns)
 
-Now includes `video_path` and `reporter_name` (nullable). The `photo_path` is now actually used.
+Now includes `video_path`, `reporter_name`, and escalation fields.
 
 | Column | Type | Nullable | Notes |
 |--------|------|----------|-------|
@@ -142,6 +149,9 @@ Now includes `video_path` and `reporter_name` (nullable). The `photo_path` is no
 | `status` | ENUM | No | Pending, Responding, Resolved, Escalated, Rejected |
 | `barangay` | VARCHAR(255) | No | Auto‑detected |
 | `latitude` / `longitude` | DECIMAL(10,7) | No | GPS coordinates |
+| `escalated_by` | BIGINT UNSIGNED | Yes | Who escalated the incident |
+| `escalation_reason` | TEXT | Yes | Reason for escalation |
+| `escalated_at` | TIMESTAMP | Yes | When it was escalated |
 
 **Dropped columns:** `persons_involved`, `reporter_role`, `reporter_is_verified`.
 
@@ -166,10 +176,10 @@ Now includes `video_path` and `reporter_name` (nullable). The `photo_path` is no
 
 | Method | Endpoint | Controller | Method | Description |
 |--------|----------|------------|--------|-------------|
-| GET | `/responder/incidents` | `IncidentController` | `index` | List all incidents |
-| GET | `/responder/incidents/{uuid}` | `IncidentController` | `show` | Show incident by UUID |
+| GET | `/responder/incidents` | `IncidentController` | `index` | List all incidents (with duplicate detection) |
+| GET | `/responder/incidents/{uuid}` | `IncidentController` | `show` | Show incident by UUID (with duplicate detection) |
 | POST | `/responder/incidents/{uuid}/respond` | `IncidentController` | `respond` | Assign to self |
-| POST | `/responder/incidents/{uuid}/reassign` | `IncidentController` | `reassign` | Reassign |
+| POST | `/responder/incidents/{uuid}/reassign` | `IncidentController` | `reassign` | Reassign with reason (status → Escalated) |
 | POST | `/responder/incidents/{uuid}/resolve` | `IncidentController` | `resolve` | Resolve with type, description, notes |
 | POST | `/responder/incidents/{uuid}/reject` | `IncidentController` | `reject` | Reject (Admin only) |
 | POST | `/responder/incidents/{uuid}/notes` | `IncidentController` | `updateNotes` | Add notes |
@@ -181,11 +191,11 @@ Now includes `video_path` and `reporter_name` (nullable). The `photo_path` is no
 | File | Status | Notes |
 |------|--------|-------|
 | `lib/main.dart` | ✅ Updated | No auth, starts at `HomeScreen` |
-| `lib/screens/home_screen.dart` | ✅ Restructured | Added notification bell with red dot (open = mark as read). Removed `/notifications` from route map. Added periodic polling (10s), app lifecycle observer, and listener to notification service. |
+| `lib/screens/home_screen.dart` | ✅ Restructured | Notification bell with red dot; periodic polling (10s); app lifecycle observer. |
 | `lib/screens/report_incident_screen.dart` | ✅ Active | Search‑location feature + nested‑response parsing. **Do not replace with `.d` file.** |
 | `lib/screens/report_incident_screen.d` | ⏳ Original reference | No search location – kept for history. |
-| `lib/screens/my_reports_screen.dart` | ✅ Enhanced | Tabs (Active/Resolved) with white background and blue underline. Status filtering. |
-| `lib/screens/incident_report_detail_screen.dart` | ✅ Restructured | Badge next to title; unified metadata row; 12‑hour time; tappable selfie. |
+| `lib/screens/my_reports_screen.dart` | ✅ Enhanced | Tabs (Active/Resolved). **Escalated** appears in Active tab. Status label includes `Escalated`. |
+| `lib/screens/incident_report_detail_screen.dart` | ✅ Restructured | **Escalation banner** added (shows reason + escalator name). Badge next to title; unified metadata; 12‑hour time; tappable selfie. |
 | `lib/screens/alerts_screen.dart` | ✅ Restructured | Colored icon circle; consistent badge style. |
 | `lib/screens/alert_detail_screen.dart` | ✅ Restructured | Badge next to title; unified metadata row; 12‑hour time. |
 | `lib/screens/announcements_screen.dart` | ✅ Restructured | Colored icon circle; consistent card layout. |
@@ -193,8 +203,8 @@ Now includes `video_path` and `reporter_name` (nullable). The `photo_path` is no
 | `lib/screens/traffic_advisories_screen.dart` | ✅ Restructured | Colored traffic icon circle; consistent badge style. |
 | `lib/screens/traffic_advisory_detail_screen.dart` | ✅ Restructured | Badge next to title; unified metadata row; 12‑hour time. |
 | `lib/screens/notifications_screen.dart` | ✅ Enhanced | In‑app notifications (alerts, announcements, traffic, incident status). Fixed `'body'` not `'content'`. |
-| `lib/services/notification_service.dart` | ✅ Enhanced | Handles incident status changes with `ChangeNotifier`. Stores last known status. Shows "In Progress" instead of "Responding". |
-| `lib/models/incident_report_model.dart` | ✅ Enhanced | `videoPath` and `reporterName` fields added. |
+| `lib/services/notification_service.dart` | ✅ Enhanced | Handles incident status changes with `ChangeNotifier`. Stores last known status. Shows "Escalated" status and includes reason in notification body. |
+| `lib/models/incident_report_model.dart` | ✅ Enhanced | `videoPath`, `reporterName`, `escalatedByName`, and `escalationReason` fields added. |
 | `lib/services/api_service.dart` | ✅ Updated | Added `getFullImageUrl()` helper. |
 | `lib/widgets/srea_sidebar.dart` | ✅ Updated | Removed Notifications entry – bell handles it. |
 | `lib/widgets/srea_bottom_nav.dart` | ❌ Deleted | Not used |
@@ -207,11 +217,11 @@ Now includes `video_path` and `reporter_name` (nullable). The `photo_path` is no
 | File | Status | Notes |
 |------|--------|-------|
 | `lib/services/api_service.dart` | ✅ Updated | Resolve, reject, UUID support. |
-| `lib/screens/incident_detail_screen.dart` | ✅ Updated | Photo + video display, full‑screen photo viewer, resolve dialog with inline validation (min 10 chars). |
-| `lib/screens/incident_list_screen.dart` | ✅ Updated | Video indicator on thumbnails, duplicate badges, anonymous label. |
+| `lib/screens/incident_detail_screen.dart` | ✅ Updated | Photo + video display, full‑screen photo viewer, resolve dialog with inline validation (min 10 chars). **Escalated by** display added. **Local timezone fix** applied. |
+| `lib/screens/incident_list_screen.dart` | ✅ Updated | Video indicator on thumbnails, duplicate badges, anonymous label. **`Escalated`** added to status filter. |
 | `lib/screens/home_screen.dart` | ✅ Updated | App bar with RESPONDER badge, notification bell with badge. |
 | `lib/screens/profile_screen.dart` | ✅ Updated | Admin role, stats. |
-| `lib/models/incident_report_model.dart` | ✅ Updated | `videoPath` field added. |
+| `lib/models/incident_report_model.dart` | ✅ Updated | `videoPath` and `escalatedByName` fields added. |
 | `lib/services/notification_service.dart` | ✅ Updated | Real incidents as notifications with `SharedPreferences` persistence. |
 | `lib/screens/notifications_screen.dart` | ✅ Updated | Real incident notifications, tap to navigate to detail. |
 | `android/app/src/main/AndroidManifest.xml` | ✅ Fixed | Cleartext traffic + map intents added. |
@@ -256,27 +266,39 @@ Container(
 ### 9.3 Detail Screen Layout (Unified Structure)
 
 1. **Title + Badge** (same row)
-2. **Metadata Row** – icons with date, location, reporter, assigned to (as applicable)
-3. **Divider**
-4. **Description** (with section header)
-5. **Additional sections** (image, effective period, contact footer)
-6. **Optional extras** (map, notes, resolution notes)
+2. **Escalation Banner** (if status is `Escalated`) – shows reason + escalator name
+3. **Duplicate Banner** (if `isPotentialDuplicate` is true)
+4. **Metadata Column** – reporter, location (stacked), reported at, assigned to
+5. **Divider**
+6. **Description** (with section header)
+7. **Additional sections** (photo, video, map, notes, resolution notes)
 
 ### 9.4 Time Format
 
-All dates now use **12‑hour format with AM/PM**:
+All dates now use **12‑hour format with AM/PM** and **Philippines Time (UTC+8)**:
 
 ```
-Before: Aug 08, 2026 10:36
-After:  Aug 8, 2026 at 10:36 AM
+Before: Aug 08, 2026 10:36 (UTC)
+After:  Aug 8, 2026 at 10:36 AM (PHT)
 ```
+
+**Implementation:** All date formatting methods call `.toLocal()` on the parsed DateTime before formatting.
 
 ### 9.5 My Reports Screen
 
-- **Tabs**: Active (Pending, In Progress, Responding) and Resolved (Resolved, Rejected)
+- **Tabs**: Active (Pending, In Progress, **Escalated**) and Resolved (Resolved, Rejected)
 - **White tab background** with blue underline on selected tab
 - **Status dot** replaces left border on cards
 - **Photo thumbnail** for visual reference
+- **Duplicate pill** (warning icon + "Similar nearby") when applicable
+
+### 9.6 Escalation Display
+
+| Location | Display |
+|----------|---------|
+| **My Reports (Active tab)** | Status label shows "Escalated" |
+| **Incident Detail** | Banner: "⚠️ Report Escalated" + reason + "Escalated by: [name]" |
+| **Notifications** | Notification title: "Report Escalated" + body with reason |
 
 ---
 
@@ -290,7 +312,9 @@ After:  Aug 8, 2026 at 10:36 AM
 | **Foreground check** | Immediate check when app returns from background | ✅ Working |
 | **Red dot** | Shows if `latest_notification_timestamp` > `last_notification_view_time` | ✅ Working |
 | **Mark as read** | Bell tap or opening `NotificationsScreen` updates timestamp | ✅ Working |
-| **Status display** | Shows "In Progress" instead of "Responding" | ✅ Working |
+| **Status display** | Shows "In Progress", "Escalated", "Resolved", "Rejected" | ✅ Working |
+| **Rejection reason** | Included in notification body when rejected | ✅ Working |
+| **Escalation reason** | Included in notification body when escalated | ✅ Working |
 | **Notification screen** | Merges alerts, announcements, traffic, and incident status changes | ✅ Working |
 
 ### ✅ Current – In‑App Notifications (Responder)
@@ -359,8 +383,25 @@ After:  Aug 8, 2026 at 10:36 AM
 
 - **Custom tabs** (not `TabController`) using `IndexedStack`.
 - **White background** with **blue underline** on selected tab.
-- **Active tab:** Pending, Responding, In Progress.
+- **Active tab:** Pending, Responding, In Progress, **Escalated**.
 - **Resolved tab:** Resolved, Rejected.
+
+### 11.9 Escalated Status Handling
+
+| App | Behavior |
+|-----|----------|
+| **Backend** | `reassign()` sets `status = 'Escalated'`, stores `escalation_reason`, `escalated_by`, `escalated_at`. |
+| **Responder** | List filter includes `Escalated`; detail shows `Escalated by: [name]`. |
+| **Resident** | Appears in Active tab with `Escalated` status; detail shows banner with reason and escalator name. |
+| **Notifications** | Shows `Escalated` status; includes reason if available. |
+
+### 11.10 Duplicate Detection Configuration
+
+| Setting | Value | Location |
+|---------|-------|----------|
+| **Time window** | 30 minutes | `$timeWindow = 30;` in `getPotentialDuplicateCount()` |
+| **Distance** | 100 meters | `$distance = 0.1;` (kilometers) |
+| **Algorithm** | Haversine formula | MySQL `acos()`, `sin()`, `cos()`, `radians()` |
 
 ---
 
@@ -403,18 +444,17 @@ public function store(Request $request)
 }
 ```
 
-### `IncidentController.php` – show() and index() (Reporter Name Fix)
+### `IncidentController.php` – show() with Duplicate Detection
 
 ```php
 public function show($uuid)
 {
-    $incident = Incident::with(['assignedTo', 'reporter'])
+    $incident = Incident::with(['assignedTo', 'reporter', 'escalatedBy'])
         ->where('uuid', $uuid)
         ->firstOrFail();
 
     $data = $incident->toArray();
 
-    // ✅ Use reporter_name if available, otherwise fallback to "Anonymous"
     if ($incident->user_id === null) {
         $reporterName = $incident->reporter_name ?? 'Anonymous';
         $data['reporter'] = [
@@ -425,7 +465,73 @@ public function show($uuid)
         $data['reporter_name'] = $reporterName;
     }
 
+    // Duplicate detection
+    $duplicateCount = $this->getPotentialDuplicateCount($incident);
+    $data['is_potential_duplicate'] = $duplicateCount > 0;
+    $data['potential_duplicate_count'] = $duplicateCount;
+
     return response()->json($data);
+}
+```
+
+### `IncidentController.php` – reassign() (Escalation)
+
+```php
+public function reassign(Request $request, $uuid)
+{
+    $validated = $request->validate([
+        'reason' => 'required|string|min:10',
+    ]);
+
+    $incident = Incident::where('uuid', $uuid)->firstOrFail();
+
+    // Unassign the incident and escalate
+    $incident->assigned_to = null;
+    $incident->status = 'Escalated';
+    $incident->escalation_reason = $validated['reason'];
+    $incident->escalated_by = $request->user()->id;
+    $incident->escalated_at = now();
+    $incident->save();
+
+    return response()->json([
+        'message' => 'Incident reassigned to admin successfully',
+        'incident' => $incident,
+    ]);
+}
+```
+
+### `IncidentController.php` – getPotentialDuplicateCount() (Haversine Formula)
+
+```php
+protected function getPotentialDuplicateCount($incident)
+{
+    try {
+        $earthRadius = 6371000; // meters
+        $timeWindow = 30; // minutes (configurable)
+
+        $lat1 = deg2rad($incident->latitude);
+        $lon1 = deg2rad($incident->longitude);
+
+        return Incident::where('id', '!=', $incident->id)
+            ->where('barangay', $incident->barangay)
+            ->whereIn('status', ['Pending', 'Responding'])
+            ->whereRaw(
+                "
+                (
+                    {$earthRadius} * acos(
+                        cos({$lat1}) * cos(radians(latitude)) * 
+                        cos(radians(longitude) - {$lon1}) + 
+                        sin({$lat1}) * sin(radians(latitude))
+                    )
+                ) < 100
+                "
+            )
+            ->where('reported_at', '>=', now()->subMinutes($timeWindow))
+            ->count();
+    } catch (\Exception $e) {
+        logger()->error('Duplicate detection failed: ' . $e->getMessage());
+        return 0;
+    }
 }
 ```
 
@@ -457,19 +563,24 @@ protected $fillable = [
 | App bar centered | Inconsistent | Removed `centerTitle` | Aug 8 |
 | Left border looks ugly | Design choice | Replaced with colored icon circle | Aug 9 |
 | Badges inconsistent across screens | Different styling | Unified badge styling across all screens | Aug 9 |
-| Detail screens inconsistent structure | Different layouts | Unified structure: badge + title row, metadata row, divider, description, extras | Aug 9 |
+| Detail screens inconsistent structure | Different layouts | Unified structure | Aug 9 |
 | Time format 24-hour (military) | Default parsing | Changed to 12-hour with AM/PM | Aug 9 |
 | Selfie photo not tappable | Missing GestureDetector | Added full-screen image viewer | Aug 9 |
 | Detail screen badge floating above title | Layout issue | Badge now next to title in same row | Aug 9 |
 | Announcement notifications blank | Used `'content'` instead of `'body'` | Fixed to use `'body'` | Aug 9 |
 | Resident notifications not working | No polling/listener | Added 10s polling + foreground check + listener | Aug 9 |
-| Notification red dot not appearing | `latest_notification_timestamp` not updated | Added `_updateLatestTimestamp()` in `addNotification()` | Aug 9 |
+| Notification red dot not appearing | `latest_notification_timestamp` not updated | Added `_updateLatestTimestamp()` | Aug 9 |
 | Notification shows "Responding" instead of "In Progress" | Raw status used directly | Added `_getDisplayStatus()` mapping | Aug 9 |
 | Resolve dialog "Action failed" | Backend requires min 10 chars | Added inline validation (min 10 chars) | Aug 9 |
 | Responder notification 404 | Used integer ID instead of UUID | Use `uuid` field from backend | Aug 9 |
 | Report screen not clearing after submission | State not reset | Added `setState` reset before navigation | Aug 9 |
 | My Reports tabs not working | `TabController` initialization issues | Replaced with custom tabs + `IndexedStack` | Aug 9 |
 | Emergency call button | No confirmation | Added confirmation dialog with hotline number | Aug 9 |
+| **Escalated status not showing** | Missing fields and UI | Added `escalatedByName`, escalation banner, status label, filter | Aug 10 |
+| **Duplicate detection SQL error** | `ST_Distance_Sphere` not available | Replaced with Haversine formula | Aug 10 |
+| **Duplicate detection time window** | 15 min too short | Changed to 30 minutes | Aug 10 |
+| **Timezone incorrect** | UTC used instead of PHT | Added `.toLocal()` to all date formatting methods | Aug 10 |
+| **Reassign action failed** | Missing `responder_id` validation | Fixed to accept `reason` only (unassign + escalate) | Aug 10 |
 
 ---
 
@@ -514,36 +625,46 @@ protected $fillable = [
 | Report screen not clearing | State not reset | ✅ Fixed |
 | My Reports tabs | `TabController` issues | ✅ Fixed (custom tabs) |
 | Emergency call button | No confirmation | ✅ Fixed |
+| **Escalated status not showing** | Missing fields and UI | ✅ Fixed |
+| **Duplicate detection SQL error** | `ST_Distance_Sphere` not available | ✅ Fixed (Haversine) |
+| **Timezone incorrect** | UTC used instead of PHT | ✅ Fixed (`.toLocal()`) |
 
 ---
 
 ## 15. Next Steps (Roadmap)
 
-### ✅ Completed
+### ✅ Completed (v3.3)
 
 1. All critical bugs and UI issues fixed.
-2. Backend fully updated (`video_path`, controller, model).
+2. Backend fully updated (`video_path`, controller, model, duplicate detection).
 3. Android manifest fixed.
 4. UI unified (badges, icons, detail screens, 12‑hour time).
 5. Selfie tappable (full‑screen viewer).
 6. Notification bell with red dot (in‑app).
 7. Resident notifications with polling + foreground checks.
 8. Sidebar cleaned up (notifications removed).
-9. My Reports tabs (Active/Resolved).
+9. My Reports tabs (Active/Resolved) with **Escalated** support.
 10. Emergency call with confirmation.
 11. Responder app – video display, resolve validation, notifications.
+12. **Escalated status** fully supported in both apps.
+13. **Duplicate detection** with 30‑minute window using Haversine formula.
+14. **Local timezone** (PHT) applied to all dates.
+15. **Reassign action** fixed (unassign + escalate).
 
 ### 🔴 In Progress / Testing
 
-1. **Test the Full Anonymous Flow** – submit → respond → resolve → resident sees status update.
-2. **Ensure Backend is Running Correctly** – restart server, verify ADB reverse, test endpoints.
+1. **Test the Full Anonymous Flow** – submit → respond → resolve → escalate → resident sees status update.
+2. **Test Duplicate Detection** – submit two reports within 30 minutes and 100 meters.
+3. **Ensure Backend is Running Correctly** – restart server, verify ADB reverse, test endpoints.
+4. **Test Escalation Flow** – responder reassigns → status becomes `Escalated` → resident sees banner.
 
 ### ⏳ Planned (Future)
 
-3. **Push Notifications (FCM)** – implement real‑time push notifications (Messenger‑like).
-4. **Deploy backend to live server** – update `baseUrl` in apps.
-5. **Admin panel** – Filament (future).
-6. **Responder app improvements** – refine duplicate handling, reject flow.
+5. **Push Notifications (FCM)** – implement real‑time push notifications (Messenger‑like).
+6. **Deploy backend to live server** – update `baseUrl` in apps.
+7. **Admin panel** – Filament (future).
+8. **Responder app improvements** – refine duplicate handling, reject flow.
+9. **View similar reports** – tap duplicate badge to see list of nearby reports.
 
 ---
 
@@ -591,6 +712,19 @@ flutter run
 
 **Important:** The search feature is **temporary** for testing. The app will still block out‑of‑bounds submissions via `_isLocationValid`.
 
+### Testing Duplicate Detection
+1. Submit Report A at coordinates (14.9837327, 120.9474747) in Barangay Caingin.
+2. Within 30 minutes, submit Report B at coordinates (14.9837327, 120.9474748) (very close).
+3. Open responder app → both reports show `⚠️ 1 nearby` badge.
+4. After 30 minutes, the badge disappears.
+
+### Testing Escalation Flow
+1. Responder opens an incident → taps "Reassign".
+2. Selects a reason (min 10 characters) → confirms.
+3. Incident status becomes `Escalated`.
+4. Resident app → My Reports → Active tab shows "Escalated".
+5. Resident opens detail → sees banner with reason and escalator name.
+
 ---
 
 ## 17. Design System Reference
@@ -604,6 +738,7 @@ flutter run
 | Low / Success | `SreaColors.low` / `SreaColors.success` |
 | Pending | `SreaColors.warning` |
 | Responding / In Progress | `SreaColors.high` |
+| Escalated | `SreaColors.high` |
 | Resolved | `SreaColors.success` |
 | Rejected | `SreaColors.error` |
 
@@ -615,6 +750,8 @@ flutter run
 | Announcements | `Icons.announcement_outlined` |
 | Traffic Advisories | `Icons.traffic_rounded` |
 | Incident Reports (My Reports) | Status dot + photo thumbnail |
+| Duplicate Indicator | `Icons.warning_amber_rounded` + "Similar nearby" |
+| Escalation Indicator | `Icons.warning_amber_rounded` + "Report Escalated" |
 
 ### Badge Colors
 
@@ -631,6 +768,13 @@ flutter run
 - **Selected underline:** `SreaColors.primary` (blue)
 - **Unselected underline:** Transparent
 
+### Escalation Banner
+
+- **Background:** `SreaColors.highBg`
+- **Border:** `SreaColors.high.withOpacity(0.3)`
+- **Text:** `SreaColors.high` for title, `SreaColors.textSecondary` for reason
+- **Icon:** `Icons.warning_amber_rounded` in `SreaColors.high`
+
 ---
 
 ## 18. How to Use This Memory File
@@ -645,11 +789,13 @@ flutter run
 - Do not remove search location, cleartext traffic, or submission parsing logic.
 - For video playback, ensure `video_player` is added and `ApiService.getFullImageUrl()` is used.
 - All badges now use the unified styling (colored background + border).
-- All detail screens follow the same structure: Title + Badge → Metadata → Divider → Description → Extras.
-- All times are in 12‑hour format with AM/PM.
+- All detail screens follow the same structure: Title + Badge → Escalation Banner → Duplicate Banner → Metadata → Divider → Description → Extras.
+- All times are in 12‑hour format with AM/PM and use `.toLocal()` for PHT.
 - Selfie photos are tappable for full‑screen viewing.
 - My Reports uses custom tabs (not `TabController`) to avoid initialization errors.
+- **Escalated** status appears in Active tab for residents and in filter for responders.
+- **Duplicate detection** uses Haversine formula with 30‑minute window.
 
 ---
 
-**End of Memory File** – Save as `SREA_COMPLETE_MEMORY_v3.2.md`
+**End of Memory File** – Save as `SREA_COMPLETE_MEMORY_v3.3.md`

@@ -9,14 +9,6 @@
 
 @section('content')
 <style>
-    .incident-row-critical { border-left: 4px solid #D63939; }
-    .incident-row-high     { border-left: 4px solid #F76707; }
-    .incident-row-medium   { border-left: 4px solid #F59F00; }
-    .incident-row-low      { border-left: 4px solid #2FB344; }
-    .badge-level-critical { background:#D63939; color:#fff; }
-    .badge-level-high     { background:#F76707; color:#fff; }
-    .badge-level-medium   { background:#F59F00; color:#fff; }
-    .badge-level-low      { background:#2FB344; color:#fff; }
     .badge-status-responding { background:#FDE8E8; color:#D63939; }
     .badge-status-waiting    { background:#E7E9FB; color:#4C51BF; }
 </style>
@@ -49,7 +41,6 @@
                         <th>Type</th>
                         <th>Barangay</th>
                         <th>Reporter</th>
-                        <th>Level</th>
                         <th>Status</th>
                         <th>Assigned</th>
                         <th>Time</th>
@@ -63,7 +54,7 @@
                             <td>{{ $incident['type'] }}</td>
                             <td>{{ $incident['barangay'] }}</td>
                             <td>{{ $incident['reporter'] }}</td>
-                            <td><span class="badge badge-level-{{ $incident['level'] }}">{{ ucfirst($incident['level']) }}</span></td>
+                            
                             <td>
                                 <span class="badge badge-status-{{ $incident['status'] }}">
                                     {{ $incident['status'] === 'responding' ? 'Responding' : 'Waiting for Response' }}

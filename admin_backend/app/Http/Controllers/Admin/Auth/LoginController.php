@@ -21,7 +21,7 @@ class LoginController extends Controller
                 auth()->guard('backpack')->logout();
                 return back()->withErrors(['email' => 'Access restricted to admin accounts only.']);
             }
-            return redirect()->intended(backpack_url('dashboard'));
+            return redirect()->intended(backpack_url('live-map'));
         }
 
         return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();

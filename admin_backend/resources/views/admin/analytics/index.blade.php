@@ -12,7 +12,7 @@
 
 <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
     <div>
-        <h2 class="mb-1">Analytics & Prediction</h2>
+        <h2 class="mb-1">Analytics & Reports</h2>
         <div class="text-muted">Registered public mobile app users</div>
     </div>
     <div class="d-flex align-items-end gap-2">
@@ -28,27 +28,20 @@
         <button class="btn btn-sm btn-outline-secondary" onclick="exportCsv()">Export</button>
     </div>
 </div>
-
+  
 <div class="row row-cards my-3">
-    <div class="col-sm-4">
+    <div class="col-sm-6">
         <div class="card"><div class="card-body">
             <div class="text-muted small mb-1">Avg Response Time</div>
             <div class="h1 mb-0 text-success">{{ $stats['avg_response_time'] }}</div>
             <div class="small text-success">▼ Improved {{ $stats['avg_response_improved'] }}</div>
         </div></div>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-6">
         <div class="card"><div class="card-body">
             <div class="text-muted small mb-1">High Risk Barangays</div>
             <div class="h1 mb-0 text-danger">{{ $stats['high_risk_barangays']['count'] }}</div>
             <div class="small text-muted">{{ $stats['high_risk_barangays']['names'] }}</div>
-        </div></div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card"><div class="card-body">
-            <div class="text-muted small mb-1">Prediction Accuracy</div>
-            <div class="h1 mb-0 text-warning">{{ $stats['prediction_accuracy'] }}</div>
-            <div class="small text-warning">Based on 6-month data</div>
         </div></div>
     </div>
 </div>
@@ -81,8 +74,8 @@
 </div>
 
 <div class="card">
-    <div class="card-header"><h6 class="mb-0">Monthly Trend + Prediction (Next 3 Months)</h6></div>
-    <div class="card-body">
+        <div class="card-header"><h6 class="mb-0">Monthly Incident Trend</h6></div>
+        <div class="card-body">
         <canvas id="trendChart" height="90"></canvas>
     </div>
 </div>
@@ -117,8 +110,7 @@
             data: {
                 labels: trendRows.map(r => r.month),
                 datasets: [
-                    { label: 'Predict', data: trendRows.map(r => r.predict), borderColor: '#6C63FF', backgroundColor: '#6C63FF', tension: 0.3 },
-                    { label: 'Actual', data: trendRows.map(r => r.actual), borderColor: '#E0554F', backgroundColor: '#E0554F', tension: 0.3 }
+                    { label: 'Actual Incidents', data: trendRows.map(r => r.actual), borderColor: '#E0554F', backgroundColor: '#E0554F', tension: 0.3, fill: false }
                 ]
             },
             options: { responsive: true, plugins: { legend: { position: 'top' } } }
@@ -144,8 +136,8 @@
     function exportCsv() {
         let csv = 'Barangay,Incident Count\n';
         allBarangayData.forEach(r => csv += `${r.barangay},${r.count}\n`);
-        csv += '\nMonth,Predicted,Actual\n';
-        allTrendData.forEach(r => csv += `${r.month},${r.predict},${r.actual ?? ''}\n`);
+        csv += '\nMonth,Actual\n';
+        allTrendData.forEach(r => csv += `${r.month},${r.actual ?? ''}\n`);
 
         const blob = new Blob([csv], { type: 'text/csv' });
         const link = document.createElement('a');

@@ -14,7 +14,7 @@ class MockResponderReports
                 'barangay' => 'Banca-Banca',
                 'description' => 'Water level reached knee-height along the main road. Assisted 3 households to evacuate to the barangay hall.',
                 'photo_path' => null,
-                'persons_involved' => 3,
+                'persons_involved' => 2,
                 'responder_name' => 'Juan Dela Cruz',
                 'responder_notes' => 'Deployed rubber boat for evacuation. No injuries reported.',
                 'status' => 'resolved',

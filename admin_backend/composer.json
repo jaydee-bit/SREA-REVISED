@@ -12,9 +12,12 @@
         "php": "^8.3",
         "backpack/crud": "*",
         "backpack/theme-tabler": "*",
+        "barryvdh/laravel-dompdf": "*",
         "laravel/framework": "^13.0",
+        "laravel/reverb": "^1.0",
         "laravel/sanctum": "*",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "spatie/laravel-activitylog": "*"
     },
     "require-dev": {
         "backpack/generators": "*",

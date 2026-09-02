@@ -3,20 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Support\MockBarangays;
-use App\Support\MockIncidents;
-use App\Support\MockResponders;
+use App\Models\Incident;
+use App\Models\User;
+use Illuminate\Http\Request;
 
 class ResponseMonitorController extends Controller
 {
     public function index()
     {
-        $incidents = MockIncidents::all();
-        $barangays = MockBarangays::withIncidentCounts();
-        $responders = MockResponders::all();
-        $waiting = collect($incidents)->where('status', 'waiting')->values();
-        $active = collect($incidents)->where('status', 'responding')->values();
+        $incidents = Incident::with(['reporter', 'assignedTo.responderProfile'])
+            ->orderByDesc('reported_at')
+            ->get();
 
-        return view('admin.response-monitor.index', compact('incidents', 'barangays', 'responders', 'waiting', 'active'));
+        $waiting = $incidents->where('status', 'Pending')->values();
+        $active = $incidents->where('status', 'Responding')->values();
+        $escalated = $incidents->where('status', 'Escalated')->values();
+
+        $standbyResponders = User::where('role', 'responder')
+            ->whereHas('responderProfile', fn ($q) => $q->where('current_status', 'Standby'))
+            ->with('responderProfile')
+            ->get();
+
+        return view('admin.response-monitor.index', compact('incidents', 'waiting', 'active', 'escalated', 'standbyResponders'));
+    }
+
+    public function dispatch(Request $request, Incident $incident)
+    {
+        $request->validate([
+            'responder_id' => 'required|exists:users,id',
+        ]);
+
+        $incident->update([
+            'assigned_to' => $request->responder_id,
+            'status' => 'Responding',
+        ]);
+
+        $responder = User::find($request->responder_id);
+        $responder->responderProfile()->update(['current_status' => 'Deployed']);
+
+        return response()->json(['ok' => true]);
     }
 }

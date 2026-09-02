@@ -3,18 +3,33 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Support\MockBarangays;
-use App\Support\MockIncidents;
-use App\Support\MockResponders;
+use App\Models\Barangay;
+use App\Models\Incident;
+use App\Models\User;
 
 class LiveMapController extends Controller
 {
     public function index()
     {
-        $barangays = MockBarangays::withIncidentCounts();
-        $incidents = MockIncidents::all();
-        $responders = MockResponders::all();
+        $incidents = Incident::with(['reporter', 'assignedTo.responderProfile'])
+            ->orderByDesc('reported_at')
+            ->get();
 
-        return view('admin.live-map.index', compact('barangays', 'incidents', 'responders'));
+        $incidents->each(function ($incident) {
+            $incident->nearby_count = $incident->findNearbyReports()->count();
+        });
+
+        $barangays = Barangay::all()->map(function ($b) use ($incidents) {
+            return [
+                'name' => $b->name,
+                'lat' => (float) $b->latitude,
+                'lng' => (float) $b->longitude,
+                'incident_count' => $incidents->where('barangay', $b->name)->count(),
+            ];
+        });
+
+        $responders = User::where('role', 'responder')->with('responderProfile')->get();
+
+        return view('admin.live-map.index', compact('incidents', 'barangays', 'responders'));
     }
-}
+}   

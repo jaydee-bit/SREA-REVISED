@@ -3,23 +3,17 @@
 namespace App\Models;
 
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Laravel\Sanctum\HasApiTokens;   // <-- required for createToken()
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class User extends Authenticatable
 {
-    use CrudTrait;
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;   // <-- added HasApiTokens
+    use CrudTrait, HasApiTokens, HasFactory, Notifiable, LogsActivity;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -38,21 +32,11 @@ class User extends Authenticatable
         'profile_image',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -61,6 +45,14 @@ class User extends Authenticatable
             'is_verified' => 'boolean',
             'birth_date' => 'date',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['role', 'name'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => "Staff account {$eventName}");
     }
 
     // Helper methods
@@ -75,6 +67,11 @@ class User extends Authenticatable
     }
 
     // Relationships
+    public function responderProfile()
+    {
+        return $this->hasOne(ResponderProfile::class);
+    }
+
     public function incidentsReported()
     {
         return $this->hasMany(Incident::class, 'user_id');

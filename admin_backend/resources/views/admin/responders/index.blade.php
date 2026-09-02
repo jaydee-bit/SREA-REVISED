@@ -1,17 +1,14 @@
 @extends(backpack_view('blank'))
 
 @php
-    $breadcrumbs = [
-        'SREA' => backpack_url('dashboard'),
-        'Responders' => false,
-    ];
+    $breadcrumbs = ['SREA' => backpack_url('dashboard'), 'Responders' => false];
 @endphp
 
 @section('content')
 <style>
-    .badge-status-deployed { background:#FCE8CC; color:#8A5A00; }
-    .badge-status-standby  { background:#D9F2E3; color:#137A45; }
-    .badge-status-off_duty { background:#E4E7ED; color:#5C6270; }
+    .badge-status-Deployed { background:#FCE8CC; color:#8A5A00; }
+    .badge-status-Standby  { background:#D9F2E3; color:#137A45; }
+    .badge-status-OffDuty  { background:#E4E7ED; color:#5C6270; }
 </style>
 
 <div class="d-flex justify-content-between align-items-start mb-3">
@@ -19,29 +16,25 @@
         <h2 class="mb-1">Responders</h2>
         <div class="text-muted">Manage MDRRMO rescue team members</div>
     </div>
-    <div>
-        <button class="btn btn-outline-secondary me-2">Distribute App</button>
-        <button class="btn" style="background:#1CA97B; color:#fff;">+ Add Responders</button>
-    </div>
 </div>
 
 <div class="row row-cards mb-3">
     <div class="col-sm-4">
         <div class="card"><div class="card-body">
             <div class="text-muted small mb-1">Total Responders</div>
-            <div class="h1 mb-0">{{ count($responders) }}</div>
+            <div class="h1 mb-0">{{ $responders->count() }}</div>
         </div></div>
     </div>
     <div class="col-sm-4">
         <div class="card"><div class="card-body">
             <div class="text-muted small mb-1">Deployed</div>
-            <div class="h1 mb-0 text-warning">{{ collect($responders)->where('status', 'deployed')->count() }}</div>
+            <div class="h1 mb-0 text-warning">{{ $responders->filter(fn($r) => $r->responderProfile?->current_status === 'Deployed')->count() }}</div>
         </div></div>
     </div>
     <div class="col-sm-4">
         <div class="card"><div class="card-body">
             <div class="text-muted small mb-1">Standby</div>
-            <div class="h1 mb-0 text-success">{{ collect($responders)->where('status', 'standby')->count() }}</div>
+            <div class="h1 mb-0 text-success">{{ $responders->filter(fn($r) => $r->responderProfile?->current_status === 'Standby')->count() }}</div>
         </div></div>
     </div>
 </div>
@@ -50,35 +43,29 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="btn-group btn-group-sm" id="statusTabs">
             <button type="button" class="btn btn-success active" data-filter="all">All</button>
-            <button type="button" class="btn btn-outline-secondary" data-filter="deployed">Deployed</button>
-            <button type="button" class="btn btn-outline-secondary" data-filter="standby">Standby</button>
-            <button type="button" class="btn btn-outline-secondary" data-filter="off_duty">Off Duty</button>
+            <button type="button" class="btn btn-outline-secondary" data-filter="Deployed">Deployed</button>
+            <button type="button" class="btn btn-outline-secondary" data-filter="Standby">Standby</button>
+            <button type="button" class="btn btn-outline-secondary" data-filter="Off Duty">Off Duty</button>
         </div>
-        <input type="text" id="responderSearch" class="form-control form-control-sm" style="width:220px;" placeholder="Search Incidents....">
+        <input type="text" id="responderSearch" class="form-control form-control-sm" style="width:220px;" placeholder="Search responders...">
     </div>
     <div class="card-body p-0">
         <table class="table table-vcenter mb-0" id="respondersTable">
             <thead>
                 <tr class="text-muted small text-uppercase">
-                    <th>ID</th><th>Name</th><th>Team</th><th>Vehicle</th><th>Phone</th>
-                    <th>Status</th><th>Location</th><th>Assigned</th><th>Action</th>
+                    <th>Name</th><th>Team</th><th>Vehicle</th><th>Email</th>
+                    <th>Status</th><th>Assigned Incident</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($responders as $r)
-                    <tr data-status="{{ $r['status'] }}">
-                        <td>{{ $r['id'] }}</td>
-                        <td>{{ $r['name'] }}</td>
-                        <td>{{ $r['team'] }}</td>
-                        <td>{{ $r['vehicle'] }}</td>
-                        <td>{{ $r['phone'] }}</td>
-                        <td><span class="badge badge-status-{{ $r['status'] }}">{{ ucfirst(str_replace('_', ' ', $r['status'])) }}</span></td>
-                        <td>{{ $r['location'] ? '📍 '.$r['location'] : '-' }}</td>
-                        <td>{{ $r['assigned_incident'] ? $r['assigned_incident'] : '-' }}</td>
-                        <td>
-                            <button class="btn btn-sm btn-light">Edit</button>
-                            <button class="btn btn-sm" style="background:#F8D7DA; color:#B02A37;">Remove</button>
-                        </td>
+                    <tr data-status="{{ $r->responderProfile->current_status ?? 'Off Duty' }}">
+                        <td>{{ $r->name }}</td>
+                        <td>{{ $r->responderProfile->team ?? '-' }}</td>
+                        <td>{{ $r->responderProfile->vehicle ?? '-' }}</td>
+                        <td>{{ $r->email }}</td>
+                        <td><span class="badge badge-status-{{ str_replace(' ', '', $r->responderProfile->current_status ?? 'OffDuty') }}">{{ $r->responderProfile->current_status ?? 'Off Duty' }}</span></td>
+                        <td>{{ $r->incidentsAssigned->first()?->id ? '#' . $r->incidentsAssigned->first()->id : '-' }}</td>
                     </tr>
                 @endforeach
             </tbody>

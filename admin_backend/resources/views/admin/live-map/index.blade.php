@@ -24,13 +24,6 @@
     .media-banner-wrap { position:relative; }
     .media-count-badge { position:absolute; top:10px; right:10px; background:#D63939; color:#fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4); }
     .media-placeholder { width:100%; height:140px; background:#EEF0F4; border-radius:10px 10px 0 0; display:flex; align-items:center; justify-content:center; color:#8A8F98; font-size:13px; }
-    .stage-track { display:flex; align-items:center; margin:10px 0; }
-    .stage-dot { width:10px; height:10px; border-radius:50%; background:#D9DCE3; flex-shrink:0; }
-    .stage-dot.done { background:#2FB344; }
-    .stage-dot.current { background:#F59F00; }
-    .stage-line { flex:1; height:2px; background:#D9DCE3; }
-    .stage-line.done { background:#2FB344; }
-    .procedure-item { border-left:2px solid #D9DCE3; padding-left:10px; margin-bottom:8px; font-size:13px; }
     .also-reported-item { border-bottom:1px solid #EEF0F4; padding:6px 0; font-size:13px; }
     .escalation-note { background:#FFF3CD; border:1px solid #F0C36D; border-radius:8px; padding:10px; font-size:13px; margin-bottom:10px; }
     #criticalAlertBanner { background:#FDE8E8; border:1px solid #D63939; color:#7A1F1F; border-radius:8px; padding:12px 16px; animation: alertPulse 1.5s ease-in-out infinite; }
@@ -55,8 +48,6 @@
     </div>
     <button class="btn btn-sm btn-light" onclick="dismissAlertBanner()">Dismiss</button>
 </div>
-
-<button class="btn btn-sm btn-outline-danger mb-2" onclick="simulateCriticalAlert()">🔔 Simulate Critical Alert (Demo)</button>
 
 <div class="row mt-3">
     <div class="col-lg-8">
@@ -84,11 +75,9 @@
             <div class="card-body">
                 <h5 class="mb-3">Active on Map</h5>
                 @foreach ($incidents as $incident)
-                    @if (!$incident['is_duplicate'])
-                        <div class="d-flex align-items-center gap-2 border rounded p-2 mb-2">
-                            <span class="small">{{ $incident['id'] }} — {{ $incident['type'] }} · {{ $incident['barangay'] }}</span>
-                        </div>
-                    @endif
+                    <div class="d-flex align-items-center gap-2 border rounded p-2 mb-2">
+                        <span class="small">#{{ $incident->id }} — {{ $incident->type }} · {{ $incident->barangay }}</span>
+                    </div>
                 @endforeach
             </div>
         </div>
@@ -124,6 +113,7 @@
     </div>
 </div>
 
+@vite('resources/js/app.js')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     const barangays = @json($barangays);
@@ -139,39 +129,26 @@
     barangays.forEach(b => brgyLookup[b.name] = b);
     const townCenter = { lat: 14.9985, lng: 120.9532 };
 
-    function locationToCoords(locationLabel) {
-        if (!locationLabel) return townCenter;
-        if (locationLabel.toLowerCase().includes('mun. hall') || locationLabel.toLowerCase().includes('municipal')) return townCenter;
-        const match = brgyLookup[locationLabel];
-        return match ? { lat: match.lat, lng: match.lng } : townCenter;
-    }
-
     const vehicleIcons = { ambulance:'🚑', 'fire truck':'🚒', 'rescue van':'🚐' };
-    function vehicleEmoji(teamLabel) {
-        if (!teamLabel) return '🚓';
-        const key = Object.keys(vehicleIcons).find(k => teamLabel.toLowerCase().includes(k));
+    function vehicleEmoji(vehicleLabel) {
+        if (!vehicleLabel) return '🚓';
+        const key = Object.keys(vehicleIcons).find(k => vehicleLabel.toLowerCase().includes(k));
         return key ? vehicleIcons[key] : '🚓';
     }
 
-    // --- Barangay layer ---
     const barangayLayer = L.layerGroup();
     barangays.forEach(b => {
         const icon = L.divIcon({ className:'', html:`<div class="brgy-badge ${b.incident_count === 0 ? 'zero' : ''}">${b.incident_count}</div>`, iconSize:[34,34], iconAnchor:[17,17] });
         L.marker([b.lat, b.lng], { icon }).bindTooltip(`${b.name} — ${b.incident_count} incident(s)`).addTo(barangayLayer);
     });
 
-    // --- Incident layer: photo/video/plain pin, ALWAYS with report-count badge if >1 ---
     const incidentLayer = L.layerGroup();
-    const primaryIncidents = incidents.filter(i => !i.is_duplicate);
-
-    primaryIncidents.forEach((inc, i) => {
+    incidents.forEach((inc, i) => {
         const brgy = brgyLookup[inc.barangay];
         if (!brgy) return;
         const lat = brgy.lat + 0.004 * Math.cos(i);
         const lng = brgy.lng + 0.004 * Math.sin(i);
-        const dupCount = incidents.filter(x => x.is_duplicate && x.duplicate_of === inc.id).length;
-        const totalReports = 1 + dupCount;
-        const badgeHtml = totalReports > 1 ? `<div class="report-count-badge">${totalReports}</div>` : '';
+        const badgeHtml = inc.nearby_count > 0 ? `<div class="report-count-badge">${inc.nearby_count + 1}</div>` : '';
 
         let pinHtml;
         if (inc.photo_path) {
@@ -183,22 +160,25 @@
         }
 
         const icon = L.divIcon({ className:'', html: pinHtml, iconSize:[32,32], iconAnchor:[16,16] });
-        const marker = L.marker([lat, lng], { icon }).bindTooltip(`${inc.id} — ${inc.type} (${totalReports} report${totalReports > 1 ? 's' : ''})`).addTo(incidentLayer);
+        const tooltipText = inc.nearby_count > 0 ? `#${inc.id} — ${inc.type} (⚠️ ${inc.nearby_count} nearby)` : `#${inc.id} — ${inc.type}`;
+        const marker = L.marker([lat, lng], { icon: icon }).bindTooltip(tooltipText).addTo(incidentLayer);
         marker.on('click', () => openIncident(inc, { lat, lng }));
     });
 
-    // --- Responder layer (vehicle icons only) ---
     const responderLayer = L.layerGroup();
-    primaryIncidents.forEach((inc, i) => {
-        if (!inc.assigned) return;
+    incidents.forEach((inc, i) => {
+        if (!inc.assigned_to) return;
         const brgy = brgyLookup[inc.barangay];
         if (!brgy) return;
         const lat = brgy.lat - 0.003 * Math.sin(i);
         const lng = brgy.lng - 0.003 * Math.cos(i);
-        const emoji = vehicleEmoji(inc.assigned.team);
-        const icon = L.divIcon({ className:'', html:`<div class="responder-pin" style="background:#4C6FFF;">${emoji}</div>`, iconSize:[32,32], iconAnchor:[16,16] });
-        const marker = L.marker([lat, lng], { icon }).bindTooltip(inc.assigned.name).addTo(responderLayer);
-        marker.on('click', () => openResponder(inc.assigned, inc));
+        const vehicle = inc.assigned_to.responder_profile?.vehicle ?? '';
+        const status = inc.assigned_to.responder_profile?.current_status ?? '';
+        const color = status === 'Deployed' ? '#2FB344' : '#4C6FFF';
+        const emoji = vehicleEmoji(vehicle);
+        const icon = L.divIcon({ className:'', html:`<div class="responder-pin" style="background:${color};">${emoji}</div>`, iconSize:[32,32], iconAnchor:[16,16] });
+        const marker = L.marker([lat, lng], { icon }).bindTooltip(inc.assigned_to.name).addTo(responderLayer);
+        marker.on('click', () => openResponder(inc.assigned_to, inc));
     });
 
     barangayLayer.addTo(map); incidentLayer.addTo(map); responderLayer.addTo(map);
@@ -215,7 +195,6 @@
         });
     });
 
-    // --- Route drawing (OSRM) ---
     let routeLayer = null;
     async function drawRoute(fromLatLng, toLatLng) {
         if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
@@ -239,11 +218,9 @@
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
     function openIncident(inc, incidentLatLng) {
-        document.getElementById('incModalTitle').textContent = `${inc.id} — ${inc.type}`;
+        document.getElementById('incModalTitle').textContent = `#${inc.id} — ${inc.type}`;
 
-        const dupCountForBadge = incidents.filter(x => x.is_duplicate && x.duplicate_of === inc.id).length;
-        const totalReportsForBadge = 1 + dupCountForBadge;
-        const countBadgeHtml = totalReportsForBadge > 1 ? `<div class="media-count-badge">${totalReportsForBadge}</div>` : '';
+        const countBadgeHtml = inc.nearby_count > 0 ? `<div class="media-count-badge">${inc.nearby_count + 1}</div>` : '';
 
         let mediaInner = '';
         if (inc.photo_path) {
@@ -255,60 +232,40 @@
         }
         document.getElementById('incMediaBanner').innerHTML = `<div class="media-banner-wrap">${mediaInner}${countBadgeHtml}</div>`;
 
-        let stageHtml = '';
-        if (inc.assigned && inc.stage !== null) {
-            const stages = ['Assigned', 'En Route', 'On Scene', 'Resolved'];
-            stageHtml = '<div class="stage-track">' + stages.map((s, i) => {
-                const dot = `<div class="stage-dot ${i < inc.stage ? 'done' : (i == inc.stage ? 'current' : '')}"></div>`;
-                return i < stages.length - 1 ? dot + `<div class="stage-line ${i < inc.stage ? 'done' : ''}"></div>` : dot;
-            }).join('') + '</div>';
-        }
-
         let escalationHtml = '';
         if (inc.status === 'Escalated' && inc.escalation_reason) {
-            escalationHtml = `<div class="escalation-note">⚠ <strong>Escalated</strong> by ${inc.escalated_by ?? 'responder'} at ${inc.escalated_at ?? '-'}<br>${inc.escalation_reason}</div>`;
+            escalationHtml = `<div class="escalation-note">⚠ <strong>Escalated</strong> by ${inc.escalated_by?.name ?? 'a responder'}<br>${inc.escalation_reason}</div>`;
         }
-
-        let procedureHtml = (inc.procedure_log || []).map(p => `<div class="procedure-item"><strong>${p.time}</strong> — ${p.step}</div>`).join('');
-
-        const dupReports = incidents.filter(x => x.is_duplicate && x.duplicate_of === inc.id);
-        let alsoReportedHtml = dupReports.length
-            ? dupReports.map(d => `<div class="also-reported-item">👤 Anonymous report — ${d.time}</div>`).join('')
-            : '<div class="small text-muted">No other reports for this incident.</div>';
 
         document.getElementById('incModalBody').innerHTML = `
             <div class="bg-light rounded p-2 mb-2">
                 <strong>${inc.barangay}</strong><br>
-                <small class="text-muted">Reporter: ${inc.reporter_name ?? 'Anonymous'}<br>Coordinates: ${inc.coordinates || '-'}<br>Status: ${inc.status}</small>
+                <small class="text-muted">Reporter: ${inc.reporter_name ?? 'Anonymous'}<br>Address: ${inc.address ?? '-'}<br>Status: ${inc.status}</small>
             </div>
+            <div class="small mb-2"><strong>Description</strong><br>${inc.description ?? '-'}</div>
             ${escalationHtml}
-            ${inc.assigned ? `<div class="small mb-2">Assigned: <strong>${inc.assigned.name}</strong> — ${inc.assigned.team}</div>${stageHtml}` : '<div class="small text-muted mb-2">No responder assigned yet.</div>'}
-            <h6 class="mt-3">Also Reported By (${dupReports.length})</h6>
-            ${alsoReportedHtml}
-            <h6 class="mt-3">Procedure Log</h6>
-            ${procedureHtml || '<div class="small text-muted">No log entries yet.</div>'}
+            ${inc.assigned_to ? `<div class="small mb-2">Assigned: <strong>${inc.assigned_to.name}</strong></div>` : '<div class="small text-muted mb-2">No responder assigned yet.</div>'}
+            ${inc.responder_notes ? `<div class="small mb-2"><strong>Notes</strong><br>${inc.responder_notes}</div>` : ''}
+            <div class="small text-muted">⚠️ ${inc.nearby_count} nearby report(s) of the same type</div>
         `;
 
         openModal('incidentModal');
 
-        if (inc.assigned) {
-            const startCoords = locationToCoords(inc.assigned.location || inc.barangay);
-            drawRoute(startCoords, incidentLatLng);
+        if (inc.assigned_to) {
+            drawRoute(townCenter, incidentLatLng);
         }
     }
 
-    function openResponder(assigned, inc) {
+    function openResponder(responder, inc) {
         document.getElementById('respModalBody').innerHTML = `
-            <div class="mb-1"><strong>${assigned.name}</strong></div>
-            <div class="small text-muted mb-2">${assigned.team}</div>
-            <div class="small mb-1">Status: <strong>${assigned.current_status}</strong></div>
-            <div class="small mb-1">Location: ${assigned.location}</div>
-            <div class="small">Assigned Incident: <strong>${inc.id}</strong> — ${inc.type} @ ${inc.barangay}</div>
+            <div class="mb-1"><strong>${responder.name}</strong></div>
+            <div class="small text-muted mb-2">${responder.responder_profile?.team ?? '-'} · ${responder.responder_profile?.vehicle ?? '-'}</div>
+            <div class="small mb-1">Status: <strong>${responder.responder_profile?.current_status ?? '-'}</strong></div>
+            <div class="small">Assigned Incident: <strong>#${inc.id}</strong> — ${inc.type} @ ${inc.barangay}</div>
         `;
         openModal('responderModal');
     }
 
-    // --- Critical alert banner + siren ---
     let audioCtx;
     function playSiren() {
         audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -333,13 +290,21 @@
         playSiren();
     }
     function dismissAlertBanner() { document.getElementById('criticalAlertBanner').style.display = 'none'; }
-    function simulateCriticalAlert() {
-        showAlertBanner('Critical Incident Reported', 'New critical flood incident in Banca-Banca — immediate response required.');
-    }
 
-    const existingCritical = primaryIncidents.find(i => i.status !== 'Resolved' && i.id === 'INC-001');
-    if (existingCritical) {
-        showAlertBanner('Active Incident', `${existingCritical.id} — ${existingCritical.type} in ${existingCritical.barangay} is still unresolved.`);
+    // --- Real-time: listen for new incidents via Reverb/Echo ---
+    if (window.Echo) {
+        window.Echo.channel('live-map')
+            .listen('.incident.reported', (e) => {
+                const inc = e.incident;
+                showAlertBanner('New Incident Reported', `#${inc.id} — ${inc.type} in ${inc.barangay} just came in.`);
+
+                const brgy = brgyLookup[inc.barangay];
+                if (brgy) {
+                    const icon = L.divIcon({ className:'', html:`<div class="incident-pin">🔴</div>`, iconSize:[32,32], iconAnchor:[16,16] });
+                    const marker = L.marker([brgy.lat, brgy.lng], { icon }).bindTooltip(`#${inc.id} — ${inc.type} (new)`).addTo(incidentLayer);
++                   marker.on('click', () => openIncident(inc, { lat: brgy.lat, lng: brgy.lng }));
+                }
+            });
     }
 </script>
 @endsection

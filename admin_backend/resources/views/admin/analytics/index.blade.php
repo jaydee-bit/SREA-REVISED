@@ -13,28 +13,29 @@
 <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
     <div>
         <h2 class="mb-1">Analytics & Reports</h2>
-        <div class="text-muted">Registered public mobile app users</div>
+        <div class="text-muted">Incident trends and response performance</div>
     </div>
     <div class="d-flex align-items-end gap-2">
         <div>
             <div class="small text-muted">From</div>
-            <input type="date" id="fromDate" class="form-control form-control-sm" value="2026-01-16">
+            <input type="date" id="fromDate" class="form-control form-control-sm">
         </div>
         <div>
             <div class="small text-muted">To</div>
-            <input type="date" id="toDate" class="form-control form-control-sm" value="2026-03-17">
+            <input type="date" id="toDate" class="form-control form-control-sm">
         </div>
         <button class="btn btn-sm btn-outline-secondary" onclick="applyDateFilter()">Filter</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetFilter()">Reset</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="exportCsv()">Export</button>
     </div>
 </div>
-  
+
 <div class="row row-cards my-3">
     <div class="col-sm-6">
         <div class="card"><div class="card-body">
             <div class="text-muted small mb-1">Avg Response Time</div>
             <div class="h1 mb-0 text-success">{{ $stats['avg_response_time'] }}</div>
-            <div class="small text-success">▼ Improved {{ $stats['avg_response_improved'] }}</div>
+            <div class="small text-muted">based on resolved incidents</div>
         </div></div>
     </div>
     <div class="col-sm-6">
@@ -49,17 +50,17 @@
 <div class="row row-cards mb-3">
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h6 class="mb-0">Incidents Per Month</h6></div>
+            <div class="card-header"><h6 class="mb-0">Incidents Per Barangay</h6></div>
             <div class="card-body">
                 <canvas id="barangayChart" height="180"></canvas>
             </div>
         </div>
     </div>
     <div class="col-lg-6">
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header"><h6 class="mb-0">Incident Types Distribution</h6></div>
             <div class="card-body" id="typeDistributionBody">
-                @foreach ($typeData as $t)
+                @forelse ($typeData as $t)
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div style="width:70px;" class="small">{{ $t['type'] }}</div>
                         <div class="type-bar-track">
@@ -67,29 +68,44 @@
                         </div>
                         <div style="width:36px;" class="small text-end">{{ $t['percent'] }}%</div>
                     </div>
-                @endforeach
+                @empty
+                    <div class="text-muted small">No classified incidents yet — types are set when a responder resolves a report.</div>
+                @endforelse
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Monthly Incident Trend</h6></div>
+            <div class="card-body">
+                <canvas id="trendChart" height="90"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card">
-        <div class="card-header"><h6 class="mb-0">Monthly Incident Trend</h6></div>
-        <div class="card-body">
-        <canvas id="trendChart" height="90"></canvas>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-    const allBarangayData = @json($barangayData);
-    const allTrendData = @json($trendData);
-
+    const allIncidents = @json($incidents);
     let barangayChart, trendChart;
 
-    function renderCharts(barangayRows, trendRows) {
+    function aggregateBarangay(rows) {
+        const counts = {};
+        rows.forEach(r => counts[r.barangay] = (counts[r.barangay] || 0) + 1);
+        return Object.entries(counts).map(([barangay, count]) => ({ barangay, count }));
+    }
+
+    function aggregateMonthly(rows) {
+        const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const counts = {};
+        rows.forEach(r => counts[r.month] = (counts[r.month] || 0) + 1);
+        return monthOrder.filter(m => counts[m] !== undefined).map(month => ({ month, actual: counts[month] }));
+    }
+
+    function renderCharts(rows) {
         if (barangayChart) barangayChart.destroy();
         if (trendChart) trendChart.destroy();
+
+        const barangayRows = aggregateBarangay(rows);
+        const trendRows = aggregateMonthly(rows);
 
         barangayChart = new Chart(document.getElementById('barangayChart'), {
             type: 'bar',
@@ -118,26 +134,35 @@
     }
 
     function applyDateFilter() {
-        const from = new Date(document.getElementById('fromDate').value);
-        const to = new Date(document.getElementById('toDate').value);
+        const fromVal = document.getElementById('fromDate').value;
+        const toVal = document.getElementById('toDate').value;
+        if (!fromVal || !toVal) return;
 
-        const filteredBarangay = allBarangayData.filter(r => {
+        const from = new Date(fromVal);
+        const to = new Date(toVal);
+
+        const filtered = allIncidents.filter(r => {
             const d = new Date(r.date);
             return d >= from && d <= to;
         });
-        const filteredTrend = allTrendData.filter(r => {
-            const d = new Date(r.date);
-            return d >= from && d <= to;
-        });
 
-        renderCharts(filteredBarangay.length ? filteredBarangay : allBarangayData, filteredTrend.length ? filteredTrend : allTrendData);
+        renderCharts(filtered.length ? filtered : allIncidents);
+    }
+
+    function resetFilter() {
+        document.getElementById('fromDate').value = '';
+        document.getElementById('toDate').value = '';
+        renderCharts(allIncidents);
     }
 
     function exportCsv() {
+        const barangayRows = aggregateBarangay(allIncidents);
+        const trendRows = aggregateMonthly(allIncidents);
+
         let csv = 'Barangay,Incident Count\n';
-        allBarangayData.forEach(r => csv += `${r.barangay},${r.count}\n`);
+        barangayRows.forEach(r => csv += `${r.barangay},${r.count}\n`);
         csv += '\nMonth,Actual\n';
-        allTrendData.forEach(r => csv += `${r.month},${r.actual ?? ''}\n`);
+        trendRows.forEach(r => csv += `${r.month},${r.actual}\n`);
 
         const blob = new Blob([csv], { type: 'text/csv' });
         const link = document.createElement('a');
@@ -146,6 +171,6 @@
         link.click();
     }
 
-    renderCharts(allBarangayData, allTrendData);
+    renderCharts(allIncidents);
 </script>
 @endsection

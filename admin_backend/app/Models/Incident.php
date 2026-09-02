@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str; // ✅ RESTORED – critical for UUID generation
+use Illuminate\Support\Str;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Incident extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -17,7 +19,7 @@ class Incident extends Model
         'type',
         'description',
         'photo_path',
-        'video_path',        // ✅ Added
+        'video_path',
         'barangay',
         'location_details',
         'latitude',
@@ -41,6 +43,14 @@ class Incident extends Model
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'assigned_to', 'escalated_by', 'type'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => "Incident {$eventName}");
+    }
 
     public function reporter()
     {
@@ -68,7 +78,7 @@ class Incident extends Model
 
         static::creating(function ($model) {
             if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid(); // ✅ Uses the imported Str
+                $model->uuid = (string) Str::uuid();
             }
         });
     }
@@ -76,5 +86,53 @@ class Incident extends Model
     public function getRouteKeyName()
     {
         return 'uuid';
+    }
+
+    // --- Status scopes ---
+    public function scopePending($query)
+    {
+        return $query->where('status', 'Pending');
+    }
+
+    public function scopeResponding($query)
+    {
+        return $query->where('status', 'Responding');
+    }
+
+    public function scopeEscalated($query)
+    {
+        return $query->where('status', 'Escalated');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'Rejected');
+    }
+
+    public function scopeResolved($query)
+    {
+        return $query->where('status', 'Resolved');
+    }
+
+    // --- Real-time duplicate detection (Haversine formula, ~100m radius, 30-minute window) ---
+    public function findNearbyReports()
+    {
+        return static::query()
+            ->where('id', '!=', $this->id)
+            ->where('type', $this->type)
+            ->whereBetween('reported_at', [
+                $this->reported_at->copy()->subMinutes(30),
+                $this->reported_at->copy()->addMinutes(30),
+            ])
+            ->selectRaw('
+                *,
+                (6371000 * acos(
+                    cos(radians(?)) * cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) +
+                    sin(radians(?)) * sin(radians(latitude))
+                )) AS distance_meters
+            ', [$this->latitude, $this->longitude, $this->latitude])
+            ->havingRaw('distance_meters <= 100')
+            ->get();
     }
 }

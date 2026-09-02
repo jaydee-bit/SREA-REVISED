@@ -10,7 +10,7 @@ class Alert extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title', 'description', 'level', 'barangay',
+        'title', 'description', 'barangay',
         'location_lat', 'location_lng', 'is_active', 'created_by'
     ];
 

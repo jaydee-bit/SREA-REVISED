@@ -12,5 +12,6 @@
 
 <div class="text-muted small text-uppercase px-3 pt-3 pb-1">Control</div>
 <x-backpack::menu-item title="Send Alert" icon="la la-bell" :link="backpack_url('send-alert')" />
+<x-backpack::menu-item title="Audit Trail" icon="la la-history" :link="backpack_url('audit-log')" />
 <x-backpack::menu-item title="Analytics" icon="la la-chart-bar" :link="backpack_url('analytics')" />
-<x-backpack::menu-item title="Users Management" icon="la la-users" :link="backpack_url('user')" />
+<x-backpack::menu-item title="Staff Accounts" icon="la la-users" :link="backpack_url('user')" />

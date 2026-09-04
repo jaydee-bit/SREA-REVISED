@@ -144,10 +144,16 @@
 
     const incidentLayer = L.layerGroup();
     incidents.forEach((inc, i) => {
-        const brgy = brgyLookup[inc.barangay];
-        if (!brgy) return;
-        const lat = brgy.lat + 0.004 * Math.cos(i);
-        const lng = brgy.lng + 0.004 * Math.sin(i);
+        let lat, lng;
+        if (inc.latitude && inc.longitude) {
+            lat = inc.latitude;
+            lng = inc.longitude;
+        } else {
+            const brgy = brgyLookup[inc.barangay];
+            if (!brgy) return;
+            lat = brgy.lat + 0.004 * Math.cos(i);
+            lng = brgy.lng + 0.004 * Math.sin(i);
+        }
         const badgeHtml = inc.nearby_count > 0 ? `<div class="report-count-badge">${inc.nearby_count + 1}</div>` : '';
 
         let pinHtml;
@@ -168,10 +174,16 @@
     const responderLayer = L.layerGroup();
     incidents.forEach((inc, i) => {
         if (!inc.assigned_to) return;
-        const brgy = brgyLookup[inc.barangay];
-        if (!brgy) return;
-        const lat = brgy.lat - 0.003 * Math.sin(i);
-        const lng = brgy.lng - 0.003 * Math.cos(i);
+        let lat, lng;
+        if (inc.latitude && inc.longitude) {
+            lat = inc.latitude - 0.0008;
+            lng = inc.longitude - 0.0008;
+        } else {
+            const brgy = brgyLookup[inc.barangay];
+            if (!brgy) return;
+            lat = brgy.lat - 0.003 * Math.sin(i);
+            lng = brgy.lng - 0.003 * Math.cos(i);
+        }
         const vehicle = inc.assigned_to.responder_profile?.vehicle ?? '';
         const status = inc.assigned_to.responder_profile?.current_status ?? '';
         const color = status === 'Deployed' ? '#2FB344' : '#4C6FFF';
@@ -298,11 +310,10 @@
                 const inc = e.incident;
                 showAlertBanner('New Incident Reported', `#${inc.id} — ${inc.type} in ${inc.barangay} just came in.`);
 
-                const brgy = brgyLookup[inc.barangay];
-                if (brgy) {
+                if (inc.latitude && inc.longitude) {
                     const icon = L.divIcon({ className:'', html:`<div class="incident-pin">🔴</div>`, iconSize:[32,32], iconAnchor:[16,16] });
-                    const marker = L.marker([brgy.lat, brgy.lng], { icon }).bindTooltip(`#${inc.id} — ${inc.type} (new)`).addTo(incidentLayer);
-+                   marker.on('click', () => openIncident(inc, { lat: brgy.lat, lng: brgy.lng }));
+                    const marker = L.marker([inc.latitude, inc.longitude], { icon }).bindTooltip(`#${inc.id} — ${inc.type} (new)`).addTo(incidentLayer);
+                    marker.on('click', () => openIncident(inc, { lat: inc.latitude, lng: inc.longitude }));
                 }
             });
     }

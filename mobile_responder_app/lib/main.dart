@@ -1,12 +1,95 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:srea_shared/srea_shared.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/incident_detail_screen.dart';
+import 'models/incident_report_model.dart';
 import 'services/api_service.dart';
+import 'widgets/notification_banner.dart';
 
-void main() {
+final navigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // Case 1: app was fully closed, user tapped the notification to open it
+  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+
+  // Case 2: app is open right now, notification arrives
+  FirebaseMessaging.onMessage.listen((message) {
+    _showInAppBanner(message);
+  });
+
+  // Case 3: app was backgrounded (not closed), user tapped the notification
+  FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    _handleNotificationTap(message);
+  });
+
   runApp(const ResponderApp());
+
+  // Handle case 1 after runApp, so navigatorKey.currentState is ready
+  if (initialMessage != null) {
+    _handleNotificationTap(initialMessage);
+  }
+}
+
+void _handleNotificationTap(RemoteMessage message) async {
+  final incidentId = message.data['incident_id'];
+  if (incidentId == null) return;
+
+  try {
+    final api = ApiService();
+    final json = await api.getIncident(incidentId);
+    final incident = IncidentReport.fromJson(json);
+
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (_) => IncidentDetailScreen(incident: incident),
+      ),
+    );
+  } catch (e) {
+    // Incident may have been deleted, or the fetch failed — fail quietly
+    // rather than crash the app on a notification tap.
+  }
+}
+
+OverlayEntry? _bannerEntry;
+
+void _showInAppBanner(RemoteMessage message) {
+  final title = message.notification?.title ?? '';
+  final body = message.notification?.body ?? '';
+
+  final overlay = navigatorKey.currentState?.overlay;
+  if (overlay == null) return;
+
+  _bannerEntry?.remove();
+  _bannerEntry = OverlayEntry(
+    builder: (context) => Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: NotificationBanner(
+        title: title,
+        body: body,
+        onTap: () {
+          _bannerEntry?.remove();
+          _bannerEntry = null;
+          _handleNotificationTap(message);
+        },
+      ),
+    ),
+  );
+
+  overlay.insert(_bannerEntry!);
+
+  Future.delayed(const Duration(seconds: 5), () {
+    _bannerEntry?.remove();
+    _bannerEntry = null;
+  });
 }
 
 class ResponderApp extends StatelessWidget {
@@ -15,6 +98,7 @@ class ResponderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'SREA Responder',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

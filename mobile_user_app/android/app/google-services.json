@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "344612103997",
+    "project_id": "srea-capstone",
+    "storage_bucket": "srea-capstone.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:344612103997:android:5184d972819e7932ec0754",
+        "android_client_info": {
+          "package_name": "com.example.mobile_user_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAH0nmZri8fj1bEH9MZlLL5tRJwNCT_z0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

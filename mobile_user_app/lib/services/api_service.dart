@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'dart:io';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:cross_file/cross_file.dart';
@@ -77,6 +78,31 @@ class ApiService {
       data: formData,
     );
     return response.data['media_path'];
+  }
+
+  // ─── Push notifications (anonymous device registration) ───────────────
+
+  Future<void> registerDeviceToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      final settings = await messaging.requestPermission();
+      print('FCM permission status: ${settings.authorizationStatus}');
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        print('FCM permission not granted, stopping.');
+        return;
+      }
+
+      final token = await messaging.getToken();
+      print('FCM token: $token');
+      if (token == null) return;
+
+      final response = await _dio.post('/public/devices/register', data: {'fcm_token': token});
+      print('Device registration response: ${response.statusCode}');
+    } catch (e) {
+      print('FCM registration error: $e');
+      // Don't let a notification-registration failure block the app
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────

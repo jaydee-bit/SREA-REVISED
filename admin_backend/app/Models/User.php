@@ -30,6 +30,7 @@ class User extends Authenticatable
         'valid_id_type',
         'valid_id_photo',
         'profile_image',
+        'fcm_token',
     ];
 
     protected $hidden = [

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -58,6 +59,24 @@ class ApiService {
       return response.data;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> registerFcmToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      final settings = await messaging.requestPermission();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        return; // user declined — nothing to register
+      }
+
+      final token = await messaging.getToken();
+      if (token == null) return;
+
+      await _dio.post('/responder/fcm-token', data: {'fcm_token': token});
+    } catch (e) {
+      // Don't let a notification-registration failure block login
     }
   }
 

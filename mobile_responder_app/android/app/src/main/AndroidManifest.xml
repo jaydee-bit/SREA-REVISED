@@ -2,6 +2,9 @@
     <!-- Required for internet access (API calls) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- For notification -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <!-- Optional but recommended for reading/writing images -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />

@@ -57,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen>
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      await api.registerFcmToken();
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

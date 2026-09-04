@@ -3,12 +3,15 @@
 namespace App\Providers;
 
 use App\Models\Barangay;
+use App\Models\Alert;
 use App\Models\Incident;
 use App\Models\TrafficAdvisory;
 use App\Models\User;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use App\Observers\IncidentObserver;
+use App\Observers\AlertObserver;
+use App\Observers\TrafficAdvisoryObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Incident::observe(IncidentObserver::class);
+        Alert::observe(AlertObserver::class);
+        TrafficAdvisory::observe(TrafficAdvisoryObserver::class);
         View::composer('backpack.theme-tabler::dashboard', function ($view) {
             $activeIncidents = Incident::whereIn('status', ['Pending', 'Responding', 'Escalated'])->count();
             $newToday = Incident::whereDate('created_at', today())->count();

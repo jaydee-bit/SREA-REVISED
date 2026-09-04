@@ -3,14 +3,16 @@
 namespace App\Observers;
 
 use App\Models\Incident;
+use App\Models\User;
 use App\Events\NewIncidentReported;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
+use Illuminate\Support\Facades\Log;
 
 class IncidentObserver
 {
     public function created(Incident $incident): void
     {
-        $incident->loadMissing('assignedTo.responderProfile', 'escalatedBy');
-
         broadcast(new NewIncidentReported([
             'id' => $incident->id,
             'type' => $incident->type,
@@ -19,19 +21,33 @@ class IncidentObserver
             'longitude' => (float) $incident->longitude,
             'status' => $incident->status,
             'time' => 'Just now',
-            'address' => $incident->address,
-            'description' => $incident->description,
-            'photo_path' => $incident->photo_path,
-            'video_path' => $incident->video_path,
-            'reporter_name' => $incident->reporter_name,
-            'responder_notes' => $incident->responder_notes,
-            'escalation_reason' => $incident->escalation_reason,
-            'escalated_by' => $incident->escalatedBy?->name,
-            'assigned_to' => $incident->assignedTo ? [
-                'name' => $incident->assignedTo->name,
-                'responder_profile' => $incident->assignedTo->responderProfile,
-            ] : null,
-            'nearby_count' => $incident->findNearbyReports()->count(),
         ]));
+
+        $this->notifyResponders($incident);
+    }
+
+    protected function notifyResponders(Incident $incident): void
+    {
+        $messaging = app('firebase.messaging');
+
+        $responders = User::where('role', 'responder')
+            ->whereNotNull('fcm_token')
+            ->get();
+
+        foreach ($responders as $responder) {
+            try {
+                 $message = CloudMessage::new()
+                     ->withToken($responder->fcm_token)
+                     ->withNotification(Notification::create(
+                         'New Incident Reported',
+                         "{$incident->type} in {$incident->barangay}"
+                    ))
+                    ->withData(['incident_id' => (string) $incident->id]);
+
+                 $messaging->send($message);
+            } catch (\Throwable $e) {
+                Log::warning("FCM send failed for responder {$responder->id}: " . $e->getMessage());
+            }
+        }
     }
 }

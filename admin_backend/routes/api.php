@@ -37,12 +37,14 @@ Route::get('/user/traffic/{id}', [TrafficController::class, 'show']);
 Route::post('/public/incidents', [UserIncidentController::class, 'store']);
 Route::get('/public/incidents/{id}', [UserIncidentController::class, 'show']);
 Route::post('/public/upload-reporter-media', [UploadController::class, 'store']);
+Route::post('/public/devices/register', [App\Http\Controllers\Api\Public\DeviceController::class, 'register']);
 
 // ─── PROTECTED ROUTES (REQUIRE AUTHENTICATION) ──────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     // Common auth endpoints
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/responder/fcm-token', [AuthController::class, 'updateFcmToken']);
 
     // Profile management
     Route::post('/user/upload-image', [UploadController::class, 'uploadImage']);

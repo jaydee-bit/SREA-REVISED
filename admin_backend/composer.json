@@ -13,6 +13,7 @@
         "backpack/crud": "*",
         "backpack/theme-tabler": "*",
         "barryvdh/laravel-dompdf": "*",
+        "kreait/laravel-firebase": "*",
         "laravel/framework": "^13.0",
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "*",

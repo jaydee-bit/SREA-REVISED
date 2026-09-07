@@ -13,7 +13,7 @@ class AnalyticsController extends Controller
 
         // Avg response time (Pending -> Resolved), only from resolved incidents
         $resolved = $allIncidents->whereNotNull('resolved_at');
-        $avgMinutes = $resolved->avg(fn ($i) => $i->reported_at->diffInMinutes($i->resolved_at));
+        $avgMinutes = $resolved->avg(fn($i) => $i->reported_at->diffInMinutes($i->resolved_at));
         $avgResponseTime = $avgMinutes ? round($avgMinutes) . ' min' : 'N/A';
 
         // High risk barangays: top 3 by incident count
@@ -41,14 +41,22 @@ class AnalyticsController extends Controller
             ];
         })->values();
 
-        // Raw incident list for client-side date filtering + aggregation
-        $incidents = $allIncidents->map(fn ($i) => [
+        // Raw incident list for client-side filtering (day/month/year) + aggregation
+        $incidents = $allIncidents->map(fn($i) => [
             'barangay' => $i->barangay,
             'type' => $i->type,
             'date' => $i->reported_at->format('Y-m-d'),
             'month' => $i->reported_at->format('M'),
+            'month_num' => (int) $i->reported_at->format('n'),
+            'year' => (int) $i->reported_at->format('Y'),
+            'response_minutes' => $i->resolved_at
+                ? $i->reported_at->diffInMinutes($i->resolved_at)
+                : null,
         ]);
 
-        return view('admin.analytics.index', compact('stats', 'typeData', 'incidents'));
+        // Years present in the data, for populating the Year filter dropdown
+        $availableYears = $incidents->pluck('year')->unique()->sortDesc()->values();
+
+        return view('admin.analytics.index', compact('stats', 'typeData', 'incidents', 'availableYears'));
     }
 }

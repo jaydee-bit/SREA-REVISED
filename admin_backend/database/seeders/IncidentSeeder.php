@@ -37,7 +37,7 @@ class IncidentSeeder extends Seeder
                 'reported_at' => now()->subMinutes(15),
             ],
             [
-                'type' => 'Landslide', 'barangay' => 'Sampaloc', 'address' => 'Sampaloc hillside road',
+                'type' => 'Calamity', 'barangay' => 'Sampaloc', 'address' => 'Sampaloc hillside road',
                 'latitude' => 15.0201, 'longitude' => 121.0398,
                 'description' => 'Emergency report with selfie and video',
                 'photo_path' => 'https://picsum.photos/seed/inc002/300/300',

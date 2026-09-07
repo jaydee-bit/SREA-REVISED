@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/responder/fcm-token', [AuthController::class, 'updateFcmToken']);
+    Route::post('/responder/location', [App\Http\Controllers\Api\IncidentController::class, 'updateLocation']);
 
     // Profile management
     Route::post('/user/upload-image', [UploadController::class, 'uploadImage']);

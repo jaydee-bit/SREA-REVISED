@@ -174,16 +174,10 @@
     const responderLayer = L.layerGroup();
     incidents.forEach((inc, i) => {
         if (!inc.assigned_to) return;
-        let lat, lng;
-        if (inc.latitude && inc.longitude) {
-            lat = inc.latitude - 0.0008;
-            lng = inc.longitude - 0.0008;
-        } else {
-            const brgy = brgyLookup[inc.barangay];
-            if (!brgy) return;
-            lat = brgy.lat - 0.003 * Math.sin(i);
-            lng = brgy.lng - 0.003 * Math.cos(i);
-        }
+         const profile = inc.assigned_to.responder_profile;
+        if (!profile || !profile.current_latitude || !profile.current_longitude) return;
+        const lat = profile.current_latitude;
+        const lng = profile.current_longitude;
         const vehicle = inc.assigned_to.responder_profile?.vehicle ?? '';
         const status = inc.assigned_to.responder_profile?.current_status ?? '';
         const color = status === 'Deployed' ? '#2FB344' : '#4C6FFF';

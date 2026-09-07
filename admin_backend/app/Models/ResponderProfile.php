@@ -14,6 +14,8 @@ class ResponderProfile extends Model
         'team',
         'vehicle',
         'current_status',
+        'current_latitude',
+        'current_longitude'
     ];
 
     public function user()

@@ -96,6 +96,36 @@ class IncidentController extends Controller
     }
 
     /**
+     * Update the authenticated responder's current GPS location.
+     * Called periodically (every ~30s) by the responder app while
+     * they have an active/assigned incident.
+     * POST /api/responder/location
+     */
+    public function updateLocation(Request $request)
+    {
+        $validated = $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $profile = \App\Models\ResponderProfile::where('user_id', $request->user()->id)->first();
+
+        if (!$profile) {
+            return response()->json([
+                'message' => 'No responder profile found for this user',
+                'user_id' => $request->user()->id,
+            ], 404);
+        }
+
+        $profile->update([
+            'current_latitude' => $validated['latitude'],
+            'current_longitude' => $validated['longitude'],
+        ]);
+
+        return response()->json(['message' => 'Location updated']);
+    }
+
+    /**
      * Reassign an incident to admin (unassign) with a reason.
      * POST /api/responder/incidents/{uuid}/reassign
      */
@@ -107,6 +137,8 @@ class IncidentController extends Controller
 
         $incident = Incident::where('uuid', $uuid)->firstOrFail();
 
+        $previousResponderId = $incident->assigned_to;
+
         // Unassign the incident and escalate
         $incident->assigned_to = null;
         $incident->status = 'Escalated';
@@ -114,6 +146,11 @@ class IncidentController extends Controller
         $incident->escalated_by = $request->user()->id;
         $incident->escalated_at = now();
         $incident->save();
+
+        if ($previousResponderId) {
+            \App\Models\ResponderProfile::where('user_id', $previousResponderId)
+                ->update(['current_latitude' => null, 'current_longitude' => null]);
+        }
 
         return response()->json([
             'message' => 'Incident reassigned to admin successfully',
@@ -145,6 +182,11 @@ class IncidentController extends Controller
         $incident->resolved_at = now();
         $incident->save();
 
+        if ($incident->assigned_to) {
+            \App\Models\ResponderProfile::where('user_id', $incident->assigned_to)
+                ->update(['current_latitude' => null, 'current_longitude' => null]);
+        }
+
         return response()->json([
             'message' => 'Incident resolved successfully',
             'incident' => $incident,
@@ -173,6 +215,11 @@ class IncidentController extends Controller
         $incident->resolution_notes = $validated['reason'];
         $incident->resolved_at = now();
         $incident->save();
+
+        if ($incident->assigned_to) {
+            \App\Models\ResponderProfile::where('user_id', $incident->assigned_to)
+                ->update(['current_latitude' => null, 'current_longitude' => null]);
+        }       
 
         return response()->json([
             'message' => 'Incident rejected successfully',

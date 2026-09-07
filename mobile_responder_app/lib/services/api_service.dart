@@ -199,4 +199,11 @@ class ApiService {
       return file;
     }
   }
+  
+  Future<void> updateLocation(double lat, double lng) async {
+    await _dio.post('/responder/location', data: {
+      'latitude': lat,
+      'longitude': lng,
+    });
+  }
 }

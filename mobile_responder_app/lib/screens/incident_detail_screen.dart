@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:srea_shared/srea_shared.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/location_service.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -280,6 +281,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                       'You are now assigned to this incident',
                       SreaColors.primary,
                     );
+                    LocationService().start();
                   },
                   type: SreaButtonType.primary,
                 ),
@@ -380,6 +382,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                               'Incident has been reassigned to admin',
                               SreaColors.high,
                             );
+                            LocationService().stop();
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -606,6 +609,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                 'Incident resolved successfully',
                                 SreaColors.success,
                               );
+                              LocationService().stop();
                             }
                           },
                           type: SreaButtonType.primary,
@@ -725,6 +729,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                 'Incident rejected successfully',
                                 SreaColors.error,
                               );
+                              LocationService().stop();
                             }
                           },
                           type: SreaButtonType.primary,

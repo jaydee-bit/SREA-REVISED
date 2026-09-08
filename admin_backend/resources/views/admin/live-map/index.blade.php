@@ -74,11 +74,16 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="mb-3">Active on Map</h5>
-                @foreach ($incidents as $incident)
+                @foreach ($incidents->take(10) as $incident)
                     <div class="d-flex align-items-center gap-2 border rounded p-2 mb-2">
                         <span class="small">#{{ $incident->id }} — {{ $incident->type }} · {{ $incident->barangay }}</span>
                     </div>
                 @endforeach
+                @if ($incidents->count() > 10)
+                    <a href="{{ route('incidents.index') }}" class="btn btn-sm btn-outline-secondary w-100 mt-1">
+                        See All ({{ $incidents->count() }})
+                    </a>
+                @endif
             </div>
         </div>
     </div>
@@ -136,14 +141,39 @@
         return key ? vehicleIcons[key] : '🚓';
     }
 
+    // ─── Barangay markers (tracked by name, so we can live-update their badge) ───
     const barangayLayer = L.layerGroup();
+    const barangayMarkers = {}; // name -> { marker, count }
     barangays.forEach(b => {
         const icon = L.divIcon({ className:'', html:`<div class="brgy-badge ${b.incident_count === 0 ? 'zero' : ''}">${b.incident_count}</div>`, iconSize:[34,34], iconAnchor:[17,17] });
-        L.marker([b.lat, b.lng], { icon }).bindTooltip(`${b.name} — ${b.incident_count} incident(s)`).addTo(barangayLayer);
+        const marker = L.marker([b.lat, b.lng], { icon }).bindTooltip(`${b.name} — ${b.incident_count} incident(s)`).addTo(barangayLayer);
+        barangayMarkers[b.name] = { marker, count: b.incident_count };
     });
 
+    function updateBarangayBadge(name, delta) {
+        const entry = barangayMarkers[name];
+        if (!entry) return;
+        entry.count = Math.max(0, entry.count + delta);
+        const newIcon = L.divIcon({
+            className: '',
+            html: `<div class="brgy-badge ${entry.count === 0 ? 'zero' : ''}">${entry.count}</div>`,
+            iconSize: [34, 34],
+            iconAnchor: [17, 17],
+        });
+        entry.marker.setIcon(newIcon);
+        entry.marker.setTooltipContent(`${name} — ${entry.count} incident(s)`);
+    }
+
+    // ─── Incident markers (tracked by incident id) ───────────────────────
+    // Extracted into a function (same pattern as addResponderMarker below)
+    // so the page-load loop AND the live '.incident.reported' event build
+    // markers identically — including the barangay-centroid fallback for
+    // incidents with no exact lat/lng, which the live path was missing.
     const incidentLayer = L.layerGroup();
-    incidents.forEach((inc, i) => {
+    const incidentMarkers = {}; // incident id -> marker
+
+    function addIncidentMarker(inc, fallbackIndex) {
+        if (incidentMarkers[inc.id]) return; // already on the map — avoid dupes
         let lat, lng;
         if (inc.latitude && inc.longitude) {
             lat = inc.latitude;
@@ -151,8 +181,8 @@
         } else {
             const brgy = brgyLookup[inc.barangay];
             if (!brgy) return;
-            lat = brgy.lat + 0.004 * Math.cos(i);
-            lng = brgy.lng + 0.004 * Math.sin(i);
+            lat = brgy.lat + 0.004 * Math.cos(fallbackIndex);
+            lng = brgy.lng + 0.004 * Math.sin(fallbackIndex);
         }
         const badgeHtml = inc.nearby_count > 0 ? `<div class="report-count-badge">${inc.nearby_count + 1}</div>` : '';
 
@@ -169,23 +199,36 @@
         const tooltipText = inc.nearby_count > 0 ? `#${inc.id} — ${inc.type} (⚠️ ${inc.nearby_count} nearby)` : `#${inc.id} — ${inc.type}`;
         const marker = L.marker([lat, lng], { icon: icon }).bindTooltip(tooltipText).addTo(incidentLayer);
         marker.on('click', () => openIncident(inc, { lat, lng }));
-    });
+        incidentMarkers[inc.id] = marker;
+    }
 
+    incidents.forEach((inc, i) => addIncidentMarker(inc, i));
+
+    // ─── Responder markers (tracked by responder/user id) ────────────────
+    // Extracted into a function so both the initial page-load loop below
+    // AND the live `.responder.assigned` event (see Echo listener) build
+    // markers the exact same way — no duplicated pin logic to drift apart.
     const responderLayer = L.layerGroup();
-    incidents.forEach((inc, i) => {
+    const responderMarkers = {}; // responder (user) id -> marker
+
+    function addResponderMarker(inc) {
         if (!inc.assigned_to) return;
-         const profile = inc.assigned_to.responder_profile;
+        if (responderMarkers[inc.assigned_to.id]) return; // already on the map — avoid dupes if this fires twice
+        const profile = inc.assigned_to.responder_profile;
         if (!profile || !profile.current_latitude || !profile.current_longitude) return;
         const lat = profile.current_latitude;
         const lng = profile.current_longitude;
-        const vehicle = inc.assigned_to.responder_profile?.vehicle ?? '';
-        const status = inc.assigned_to.responder_profile?.current_status ?? '';
+        const vehicle = profile.vehicle ?? '';
+        const status = profile.current_status ?? '';
         const color = status === 'Deployed' ? '#2FB344' : '#4C6FFF';
         const emoji = vehicleEmoji(vehicle);
         const icon = L.divIcon({ className:'', html:`<div class="responder-pin" style="background:${color};">${emoji}</div>`, iconSize:[32,32], iconAnchor:[16,16] });
         const marker = L.marker([lat, lng], { icon }).bindTooltip(inc.assigned_to.name).addTo(responderLayer);
         marker.on('click', () => openResponder(inc.assigned_to, inc));
-    });
+        responderMarkers[inc.assigned_to.id] = marker;
+    }
+
+    incidents.forEach(inc => addResponderMarker(inc));
 
     barangayLayer.addTo(map); incidentLayer.addTo(map); responderLayer.addTo(map);
 
@@ -297,18 +340,54 @@
     }
     function dismissAlertBanner() { document.getElementById('criticalAlertBanner').style.display = 'none'; }
 
-    // --- Real-time: listen for new incidents via Reverb/Echo ---
+    // --- Real-time: listen for map changes via Reverb/Echo ---
     if (window.Echo) {
         window.Echo.channel('live-map')
             .listen('.incident.reported', (e) => {
                 const inc = e.incident;
                 showAlertBanner('New Incident Reported', `#${inc.id} — ${inc.type} in ${inc.barangay} just came in.`);
 
-                if (inc.latitude && inc.longitude) {
-                    const icon = L.divIcon({ className:'', html:`<div class="incident-pin">🔴</div>`, iconSize:[32,32], iconAnchor:[16,16] });
-                    const marker = L.marker([inc.latitude, inc.longitude], { icon }).bindTooltip(`#${inc.id} — ${inc.type} (new)`).addTo(incidentLayer);
-                    marker.on('click', () => openIncident(inc, { lat: inc.latitude, lng: inc.longitude }));
+                // Fallback index just needs to be unique-ish for the
+                // centroid-offset math — reuse the current marker count.
+                addIncidentMarker(inc, Object.keys(incidentMarkers).length);
+                // Moved outside the old "only if lat/lng present" check —
+                // this must always fire so the badge stays in sync with
+                // LiveMapController's count, which counts every incident
+                // by barangay+status regardless of whether it has exact
+                // coordinates. updateBarangayBadge() already no-ops safely
+                // if the barangay isn't found.
+                updateBarangayBadge(inc.barangay, +1);
+            })
+            .listen('.incident.closed', (e) => {
+                const incMarker = incidentMarkers[e.incidentId];
+                if (incMarker) {
+                    incidentLayer.removeLayer(incMarker);
+                    delete incidentMarkers[e.incidentId];
                 }
+                if (e.responderId && responderMarkers[e.responderId]) {
+                    responderLayer.removeLayer(responderMarkers[e.responderId]);
+                    delete responderMarkers[e.responderId];
+                }
+                updateBarangayBadge(e.barangay, -1);
+            })
+            .listen('.responder.unassigned', (e) => {
+                const marker = responderMarkers[e.responderId];
+                if (marker) {
+                    responderLayer.removeLayer(marker);
+                    delete responderMarkers[e.responderId];
+                }
+            })
+            .listen('.responder.location-updated', (e) => {
+                const marker = responderMarkers[e.responderId];
+                if (marker) {
+                    marker.setLatLng([e.latitude, e.longitude]);
+                }
+            })
+            .listen('.responder.assigned', (e) => {
+                // Newly assigned mid-session — no marker exists for this
+                // responder yet, so build one the same way the initial
+                // page-load loop does (see addResponderMarker above).
+                addResponderMarker(e.incident);
             });
     }
 </script>

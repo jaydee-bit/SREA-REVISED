@@ -15,8 +15,6 @@ const List<String> incidentTypes = [
   'Flood',
   'Accident',
   'Calamity',
-  'Crime',
-  'Traffic',
   'Other',
 ];
 
@@ -175,12 +173,16 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
   }
 
   // ─── Perform update with better error handling ─────────────────────
-  Future<void> _performUpdate(
+  // Returns true on success, false on failure — callers that need to
+  // gate a follow-up action (e.g. only start location tracking if the
+  // "respond" API call actually succeeded) should check this instead
+  // of assuming the call succeeded just because no exception reached them.
+  Future<bool> _performUpdate(
     Future<void> Function() apiCall,
     String snackbarMessage,
     Color snackbarColor,
   ) async {
-    if (_isUpdating) return;
+    if (_isUpdating) return false;
     setState(() => _isUpdating = true);
     try {
       await apiCall();
@@ -199,6 +201,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return true;
     } catch (e) {
       setState(() => _isUpdating = false);
       // ✅ Parse actual error from backend
@@ -235,6 +238,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
           duration: const Duration(seconds: 4),
         ),
       );
+      return false;
     }
   }
 
@@ -273,7 +277,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                   label: 'Confirm Respond',
                   onPressed: () async {
                     Navigator.pop(context);
-                    await _performUpdate(
+                    final success = await _performUpdate(
                       () => ApiService().respondToIncident(
                         _incident.id,
                         _currentUserId,
@@ -281,7 +285,14 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                       'You are now assigned to this incident',
                       SreaColors.primary,
                     );
-                    LocationService().start();
+                    // Only start GPS polling if the assignment actually
+                    // went through — _performUpdate swallows API errors
+                    // internally, so without this check start() would run
+                    // even when respondToIncident() failed, silently
+                    // draining battery for an incident never assigned.
+                    if (success) {
+                      LocationService().start();
+                    }
                   },
                   type: SreaButtonType.primary,
                 ),
@@ -374,7 +385,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                 ? otherController.text.trim()
                                 : selectedReason!;
                             Navigator.pop(context);
-                            await _performUpdate(
+                            final success = await _performUpdate(
                               () => ApiService().reassignIncident(
                                 _incident.id,
                                 reason,
@@ -382,7 +393,13 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                               'Incident has been reassigned to admin',
                               SreaColors.high,
                             );
-                            LocationService().stop();
+                            // Only stop tracking if the reassign actually
+                            // went through — if it failed, this responder
+                            // is still assigned and should keep sending
+                            // location updates.
+                            if (success) {
+                              LocationService().stop();
+                            }
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -585,7 +602,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                       Expanded(
                         child: SreaButton(
                           label: 'Resolve',
-                          onPressed: () {
+                          onPressed: () async {
                             // Trigger validation
                             setSheetState(() => _autovalidate = true);
                             if (_formKey.currentState!.validate()) {
@@ -598,7 +615,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                   : null;
 
                               Navigator.pop(context);
-                              _performUpdate(
+                              final success = await _performUpdate(
                                 () => ApiService().resolveIncident(
                                   uuid: _incident.id,
                                   type: selectedType,
@@ -609,7 +626,13 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                 'Incident resolved successfully',
                                 SreaColors.success,
                               );
-                              LocationService().stop();
+                              // Only stop tracking once resolve has actually
+                              // completed and succeeded — previously this
+                              // fired immediately, before the API call even
+                              // finished, regardless of outcome.
+                              if (success) {
+                                LocationService().stop();
+                              }
                             }
                           },
                           type: SreaButtonType.primary,
@@ -716,12 +739,12 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                       Expanded(
                         child: SreaButton(
                           label: 'Confirm Reject',
-                          onPressed: () {
+                          onPressed: () async {
                             setSheetState(() => _autovalidate = true);
                             if (_formKey.currentState!.validate()) {
                               final reason = reasonController.text.trim();
                               Navigator.pop(context);
-                              _performUpdate(
+                              final success = await _performUpdate(
                                 () => ApiService().rejectIncident(
                                   uuid: _incident.id,
                                   reason: reason,
@@ -729,7 +752,12 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                 'Incident rejected successfully',
                                 SreaColors.error,
                               );
-                              LocationService().stop();
+                              // Same fix as resolve/reassign — don't stop
+                              // tracking on a call that hasn't finished or
+                              // didn't succeed.
+                              if (success) {
+                                LocationService().stop();
+                              }
                             }
                           },
                           type: SreaButtonType.primary,

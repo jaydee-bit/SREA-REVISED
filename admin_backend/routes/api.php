@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/incidents/{id}/respond', [ResponderIncidentController::class, 'respond']);
         Route::post('/incidents/{id}/reassign', [ResponderIncidentController::class, 'reassign']);
         Route::post('/incidents/{id}/resolve', [ResponderIncidentController::class, 'resolve']);
+        Route::post('/incidents/{id}/reject', [ResponderIncidentController::class, 'reject']);
         Route::post('/incidents/{id}/notes', [ResponderIncidentController::class, 'updateNotes']);
     });
 

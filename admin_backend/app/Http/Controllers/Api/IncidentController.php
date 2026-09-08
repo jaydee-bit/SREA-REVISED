@@ -14,7 +14,6 @@ class IncidentController extends Controller
      */
     public function index(Request $request)
     {
-        // ✅ Added 'escalatedBy' to eager load the escalator's details
         $incidents = Incident::with(['assignedTo', 'reporter', 'escalatedBy'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -32,7 +31,6 @@ class IncidentController extends Controller
                 $item['reporter_name'] = $reporterName;
             }
 
-            // Duplicate detection
             $duplicateCount = $this->getPotentialDuplicateCount($incident);
             $item['is_potential_duplicate'] = $duplicateCount > 0;
             $item['potential_duplicate_count'] = $duplicateCount;
@@ -49,7 +47,6 @@ class IncidentController extends Controller
      */
     public function show($uuid)
     {
-        // ✅ Added 'escalatedBy' to eager load the escalator's details
         $incident = Incident::with(['assignedTo', 'reporter', 'escalatedBy'])
             ->where('uuid', $uuid)
             ->firstOrFail();
@@ -66,7 +63,6 @@ class IncidentController extends Controller
             $data['reporter_name'] = $reporterName;
         }
 
-        // Duplicate detection
         $duplicateCount = $this->getPotentialDuplicateCount($incident);
         $data['is_potential_duplicate'] = $duplicateCount > 0;
         $data['potential_duplicate_count'] = $duplicateCount;
@@ -88,6 +84,13 @@ class IncidentController extends Controller
         $incident->assigned_to = $validated['responder_id'];
         $incident->status = 'Responding';
         $incident->save();
+
+        // Load the relation the admin Live Map needs to build the
+        // responder's pin (name, vehicle, current coordinates) without
+        // a second round trip — broadcast the same shape the frontend
+        // already knows how to render from the initial page load.
+        $incident->load('assignedTo.responderProfile');
+        event(new \App\Events\ResponderAssigned($incident->toArray()));
 
         return response()->json([
             'message' => 'Incident assigned successfully',
@@ -122,6 +125,21 @@ class IncidentController extends Controller
             'current_longitude' => $validated['longitude'],
         ]);
 
+        // Only broadcast if this responder is actively assigned —
+        // no point pushing location for idle responders, since the
+        // frontend only renders markers for assigned responders.
+        $hasActiveAssignment = Incident::where('assigned_to', $request->user()->id)
+            ->where('status', 'Responding')
+            ->exists();
+
+        if ($hasActiveAssignment) {
+            event(new \App\Events\ResponderLocationUpdated(
+                $request->user()->id,
+                $validated['latitude'],
+                $validated['longitude']
+            ));
+        }
+
         return response()->json(['message' => 'Location updated']);
     }
 
@@ -139,7 +157,6 @@ class IncidentController extends Controller
 
         $previousResponderId = $incident->assigned_to;
 
-        // Unassign the incident and escalate
         $incident->assigned_to = null;
         $incident->status = 'Escalated';
         $incident->escalation_reason = $validated['reason'];
@@ -150,6 +167,11 @@ class IncidentController extends Controller
         if ($previousResponderId) {
             \App\Models\ResponderProfile::where('user_id', $previousResponderId)
                 ->update(['current_latitude' => null, 'current_longitude' => null]);
+
+            // Incident stays visible (it's Escalated, still active) — only
+            // the responder's own pin should disappear, since they're no
+            // longer assigned to anything.
+            event(new \App\Events\ResponderUnassigned($previousResponderId));
         }
 
         return response()->json([
@@ -165,7 +187,7 @@ class IncidentController extends Controller
     public function resolve(Request $request, $uuid)
     {
         $validated = $request->validate([
-            'type' => 'required|string|in:Fire,Medical,Flood,Accident,Calamity,Crime,Traffic,Other',
+            'type' => 'required|string|in:Fire,Medical,Flood,Accident,Calamity,Other',
             'description' => 'required|string|min:10',
             'resolution_notes' => 'required|string|min:10',
             'reporter_name' => 'nullable|string|max:255',
@@ -187,6 +209,8 @@ class IncidentController extends Controller
                 ->update(['current_latitude' => null, 'current_longitude' => null]);
         }
 
+        event(new \App\Events\IncidentClosed($incident->id, $incident->assigned_to, $incident->barangay));
+
         return response()->json([
             'message' => 'Incident resolved successfully',
             'incident' => $incident,
@@ -199,6 +223,7 @@ class IncidentController extends Controller
      */
     public function reject(Request $request, $uuid)
     {
+
         $validated = $request->validate([
             'reason' => 'required|string|min:10',
         ]);
@@ -219,7 +244,9 @@ class IncidentController extends Controller
         if ($incident->assigned_to) {
             \App\Models\ResponderProfile::where('user_id', $incident->assigned_to)
                 ->update(['current_latitude' => null, 'current_longitude' => null]);
-        }       
+        }
+
+        event(new \App\Events\IncidentClosed($incident->id, $incident->assigned_to, $incident->barangay));
 
         return response()->json([
             'message' => 'Incident rejected successfully',
@@ -249,15 +276,11 @@ class IncidentController extends Controller
 
     // ─── Helper: Count potential duplicates ──────────────────────────────
 
-    /**
-     * Count similar incidents nearby using Haversine formula.
-     * Same barangay, within 100m, within 15 min.
-     */
     protected function getPotentialDuplicateCount($incident)
     {
         try {
-            $earthRadius = 6371000; // meters
-            $timeWindow = 30; // minutes
+            $earthRadius = 6371000;
+            $timeWindow = 30;
 
             $lat1 = deg2rad($incident->latitude);
             $lon1 = deg2rad($incident->longitude);

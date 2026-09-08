@@ -12,6 +12,7 @@ class LiveMapController extends Controller
     public function index()
     {
         $incidents = Incident::with(['reporter', 'assignedTo.responderProfile'])
+            ->whereIn('status', ['Pending', 'Responding', 'Escalated'])
             ->orderByDesc('reported_at')
             ->get();
 
@@ -24,7 +25,9 @@ class LiveMapController extends Controller
                 'name' => $b->name,
                 'lat' => (float) $b->latitude,
                 'lng' => (float) $b->longitude,
-                'incident_count' => $incidents->where('barangay', $b->name)->count(),
+                'incident_count' => $incidents->where('barangay', $b->name)
+                    ->whereIn('status', ['Pending', 'Responding', 'Escalated'])
+                    ->count(),
             ];
         });
 

@@ -26,7 +26,7 @@ Route::post('incidents/{incident:id}/reject', [\App\Http\Controllers\Admin\Incid
     Route::get('live-map', [\App\Http\Controllers\Admin\LiveMapController::class, 'index'])->name('live-map.index');
     Route::get('responders', [\App\Http\Controllers\Admin\ResponderPageController::class, 'index'])->name('responders.index');
     Route::get('responders-reports', [\App\Http\Controllers\Admin\ResponderReportController::class, 'index'])->name('responders-reports.index');
-    Route::post('response-monitor/{incident}/dispatch', [\App\Http\Controllers\Admin\ResponseMonitorController::class, 'dispatch'])->name('response-monitor.dispatch');
+    Route::post('response-monitor/{incident:id}/dispatch', [\App\Http\Controllers\Admin\ResponseMonitorController::class, 'dispatch'])->name('response-monitor.dispatch');
     Route::get('send-alert', [\App\Http\Controllers\Admin\SendAlertController::class, 'index'])->name('send-alert.index');
     Route::get('traffic-advisory', [\App\Http\Controllers\Admin\TrafficAdvisoryController::class, 'index'])->name('traffic-advisory.index');
     Route::get('analytics', [\App\Http\Controllers\Admin\AnalyticsController::class, 'index'])->name('analytics.index');

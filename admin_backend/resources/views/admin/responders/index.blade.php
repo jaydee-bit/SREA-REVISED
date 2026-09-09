@@ -18,26 +18,6 @@
     </div>
 </div>
 
-<div class="row row-cards mb-3">
-    <div class="col-sm-4">
-        <div class="card"><div class="card-body">
-            <div class="text-muted small mb-1">Total Responders</div>
-            <div class="h1 mb-0">{{ $responders->count() }}</div>
-        </div></div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card"><div class="card-body">
-            <div class="text-muted small mb-1">Deployed</div>
-            <div class="h1 mb-0 text-warning">{{ $responders->filter(fn($r) => $r->responderProfile?->current_status === 'Deployed')->count() }}</div>
-        </div></div>
-    </div>
-    <div class="col-sm-4">
-        <div class="card"><div class="card-body">
-            <div class="text-muted small mb-1">Standby</div>
-            <div class="h1 mb-0 text-success">{{ $responders->filter(fn($r) => $r->responderProfile?->current_status === 'Standby')->count() }}</div>
-        </div></div>
-    </div>
-</div>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -54,7 +34,7 @@
             <thead>
                 <tr class="text-muted small text-uppercase">
                     <th>Name</th><th>Team</th><th>Vehicle</th><th>Email</th>
-                    <th>Status</th><th>Assigned Incident</th>
+                    <th>Assigned Incident</th>
                 </tr>
             </thead>
             <tbody>
@@ -64,7 +44,6 @@
                         <td>{{ $r->responderProfile->team ?? '-' }}</td>
                         <td>{{ $r->responderProfile->vehicle ?? '-' }}</td>
                         <td>{{ $r->email }}</td>
-                        <td><span class="badge badge-status-{{ str_replace(' ', '', $r->responderProfile->current_status ?? 'OffDuty') }}">{{ $r->responderProfile->current_status ?? 'Off Duty' }}</span></td>
                         <td>{{ $r->incidentsAssigned->first()?->id ? '#' . $r->incidentsAssigned->first()->id : '-' }}</td>
                     </tr>
                 @endforeach

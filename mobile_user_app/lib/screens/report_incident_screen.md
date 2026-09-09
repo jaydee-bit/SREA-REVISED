@@ -40,6 +40,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final MapController _mapController = MapController();
   double _currentZoom = 15.0;
 
+  // ─── Search location (for testing outside San Rafael) ────────────────
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+
   final List<String> _barangayOptions = [
     'Banca-Banca',
     'BMA – Balagtas',
@@ -1334,6 +1338,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   void dispose() {
     _mapController.dispose();
     _faceDetector.close();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -1477,6 +1482,54 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     setState(() => _selectedLatLng = latLng);
     await _updateAddressFromLatLng(latLng);
     _moveMapToLocation(latLng);
+  }
+
+  // ─── Search any address (for testing outside San Rafael) ─────────────
+  // Unlike _getCurrentLocation, this always accepts the searched point —
+  // even outside the municipality — so the reporting flow (selfie,
+  // video, submit) can be tested from anywhere. Submission itself still
+  // requires _isLocationValid, so this can't be used to send a real
+  // out-of-bounds report.
+  Future<void> _searchLocation() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _isSearching = true);
+
+    try {
+      final results = await locationFromAddress(query);
+      if (results.isEmpty) {
+        _showError('No results found for "$query".');
+        return;
+      }
+
+      final result = results.first;
+      final latLng = LatLng(result.latitude, result.longitude);
+      setState(() => _selectedLatLng = latLng);
+      await _updateAddressFromLatLng(latLng);
+      _moveMapToLocation(latLng);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isLocationValid
+                  ? 'Location found.'
+                  : 'Location found (outside San Rafael — OK for testing).',
+            ),
+            backgroundColor: _isLocationValid
+                ? SreaColors.success
+                : SreaColors.warning,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('Could not find that location. Try a more specific address.');
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
+    }
   }
 
   void _showError(String message) {
@@ -1643,25 +1696,25 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       if (!mounted) return;
 
       // ─── Reset form state ──────────────────────────────────────────────
-setState(() {
-  _reporterImage = null;
-  _reporterVideo = null;
-  _selfieCheckDone = false;
-  _selfieFaceDetected = false;
-  _selfieQualityWarning = false;
-  _selectedLatLng = null;
-  _selectedAddress = '';
-  _detectedBarangay = null;
-  _searchController.clear();
-});
+      setState(() {
+        _reporterImage = null;
+        _reporterVideo = null;
+        _selfieCheckDone = false;
+        _selfieFaceDetected = false;
+        _selfieQualityWarning = false;
+        _selectedLatLng = null;
+        _selectedAddress = '';
+        _detectedBarangay = null;
+        _searchController.clear();
+      });
 
       Navigator.pushAndRemoveUntil(
-  context,
-  MaterialPageRoute(
-    builder: (_) => IncidentReportDetailScreen(report: report),
-  ),
-  (route) => route.isFirst,
-);
+        context,
+        MaterialPageRoute(
+          builder: (_) => IncidentReportDetailScreen(report: report),
+        ),
+        (route) => route.isFirst,
+      );
     } catch (e) {
       print('Submission error: $e');
       _showError('Failed to submit report. Please try again.');
@@ -1741,6 +1794,69 @@ setState(() {
                   ),
                   child: Column(
                     children: [
+                      // ─── Search any address (testing) ────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (_) => _searchLocation(),
+                              style: SreaText.bodySmall(context),
+                              decoration: InputDecoration(
+                                hintText: 'Search an address (for testing)',
+                                hintStyle: SreaText.bodySmall(
+                                  context,
+                                ).copyWith(color: SreaColors.textHint),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: SreaRadius.input,
+                                  borderSide: BorderSide(
+                                    color: SreaColors.border,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: SreaRadius.input,
+                                  borderSide: BorderSide(
+                                    color: SreaColors.border,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            height: 42,
+                            width: 42,
+                            child: ElevatedButton(
+                              onPressed: _isSearching ? null : _searchLocation,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: SreaColors.primary,
+                                foregroundColor: SreaColors.textOnPrimary,
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: SreaRadius.button,
+                                ),
+                              ),
+                              child: _isSearching
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.search, size: 20),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(

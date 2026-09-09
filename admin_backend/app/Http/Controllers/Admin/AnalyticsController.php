@@ -11,20 +11,35 @@ class AnalyticsController extends Controller
     {
         $allIncidents = Incident::all();
 
-        // Avg response time (Pending -> Resolved), only from resolved incidents
+        // Median response time (Pending -> Resolved), only from resolved incidents.
+        // Median instead of mean so a single stuck/delayed incident can't blow out
+        // the whole figure, especially in months with few incidents.
         $resolved = $allIncidents->whereNotNull('resolved_at');
-        $avgMinutes = $resolved->avg(fn($i) => $i->reported_at->diffInMinutes($i->resolved_at));
-        $avgResponseTime = $avgMinutes ? round($avgMinutes) . ' min' : 'N/A';
+        $responseMinutes = $resolved
+            ->map(fn($i) => $i->reported_at->diffInMinutes($i->resolved_at))
+            ->sort()
+            ->values();
+        $medianMinutes = null;
+        if ($responseMinutes->count()) {
+            $mid = intdiv($responseMinutes->count(), 2);
+            $medianMinutes = $responseMinutes->count() % 2 !== 0
+                ? $responseMinutes[$mid]
+                : ($responseMinutes[$mid - 1] + $responseMinutes[$mid]) / 2;
+        }
+        $medianResponseTime = $medianMinutes !== null ? round($medianMinutes) . ' min' : 'N/A';
 
-        // High risk barangays: top 3 by incident count
+        // Top 5 barangays by incident count. Count and names are always the
+        // same set (min(5, distinct barangays)), so there's no mismatch
+        // between the headline number and the names shown under it.
         $byBarangay = $allIncidents->groupBy('barangay')->map->count()->sortDesc();
-        $highRiskNames = $byBarangay->take(3)->keys()->implode(', ');
+        $topBarangays = $byBarangay->take(5);
+        $topBarangayNames = $topBarangays->keys()->implode(', ');
 
         $stats = [
-            'avg_response_time' => $avgResponseTime,
-            'high_risk_barangays' => [
-                'count' => $byBarangay->count(),
-                'names' => $highRiskNames ?: 'No data yet',
+            'median_response_time' => $medianResponseTime,
+            'top_barangays' => [
+                'count' => $topBarangays->count(),
+                'names' => $topBarangayNames ?: 'No data yet',
             ],
         ];
 

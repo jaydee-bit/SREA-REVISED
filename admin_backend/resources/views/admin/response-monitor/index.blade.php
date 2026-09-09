@@ -9,13 +9,18 @@
     .badge-status-Responding { background:#FDE8E8; color:#D63939; }
     .badge-status-Pending    { background:#E7E9FB; color:#4C51BF; }
     .badge-status-Escalated  { background:#FFF3CD; color:#856404; }
-    .waiting-card { background:#F8F5F0; border:1px solid #EFE6D8; border-radius:8px; padding:16px; margin-bottom:12px; }
+    .waiting-card { background:#FFF3CD; border:1px solid #F0C36D; border-radius:8px; padding:16px; margin-bottom:12px; }
     .dispatch-btn { background:#F7D9B0; color:#7A4A00; border:none; width:100%; padding:10px; border-radius:6px; font-weight:500; }
-    .escalation-note { background:#FFF3CD; border:1px solid #F0C36D; border-radius:8px; padding:10px; font-size:13px; margin-bottom:10px; }
+    .escalation-note { background:#FFFFFF; border:1px solid #F0C36D; border-radius:8px; padding:10px; font-size:13px; margin-bottom:10px; }
     .media-thumb { width:60px; height:60px; border-radius:8px; object-fit:cover; background:#EEF0F4; }
     .modal-backdrop-custom { position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:1050; }
     .modal-backdrop-custom.show { display:flex; }
     .modal-box { background:#fff; border-radius:10px; width:420px; max-width:90vw; padding:24px; max-height:85vh; overflow-y:auto; }
+    .dispatch-responder-row { display:flex; justify-content:space-between; align-items:center; gap:12px; border:1px solid #E4E7ED; border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+    .dispatch-responder-row .responder-info { min-width:0; }
+    .dispatch-responder-row .responder-info strong { display:block; }
+    .dispatch-responder-row .responder-info small { display:block; }
+    .dispatch-responder-row button { flex-shrink:0; }
 </style>
 
 <div class="container-fluid">
@@ -24,7 +29,7 @@
 
     <div class="card mb-4">
         <div class="card-body">
-            <h4 class="text-warning mb-3">⚠ Waiting Response ({{ $waiting->count() }})</h4>
+            <h4 class="mb-3" style="color:#856404;">⚠ Waiting Response ({{ $waiting->count() }})</h4>
             @foreach ($waiting as $incident)
                 <div class="waiting-card">
                     <div class="d-flex justify-content-between align-items-start">
@@ -38,6 +43,12 @@
                             <div class="media-thumb d-flex align-items-center justify-content-center">🎥</div>
                         @endif
                     </div>
+
+                    <div class="escalation-note">
+                        Escalated by <strong>{{ $incident->escalatedBy->name ?? 'a responder' }}</strong> at {{ $incident->escalated_at?->format('g:i A') ?? '-' }}<br>
+                        {{ $incident->escalation_reason }}
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button class="dispatch-btn" onclick="openDispatch({{ $incident->id }})">⚡ Dispatch Responder</button>
                         <button class="btn btn-sm" style="background:#F8D7DA; color:#B02A37; white-space:nowrap;" onclick="openReject({{ $incident->id }})">Reject</button>
@@ -88,7 +99,10 @@
                         </div>
                     @endif
 
-                    <button class="btn btn-sm btn-light mt-2" onclick="openIncidentDetails({{ $incident->id }})">View Details</button>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-sm btn-light" onclick="openIncidentDetails({{ $incident->id }})">View Details</button>
+                        <button class="btn btn-sm" style="background:#F7D9B0; color:#7A4A00;" onclick="openDispatch({{ $incident->id }})">Reassign</button>
+                    </div>
                 </div>
             @endforeach
             @if ($active->isEmpty())
@@ -96,24 +110,6 @@
             @endif
         </div>
     </div>
-
-    @if ($escalated->isNotEmpty())
-        <div class="card mb-4">
-            <div class="card-body">
-                <h4 class="mb-3" style="color:#856404;">⚠ Escalated ({{ $escalated->count() }})</h4>
-                @foreach ($escalated as $incident)
-                    <div class="border rounded p-3 mb-2">
-                        <div class="fw-bold">#{{ $incident->id }} — {{ $incident->type }}</div>
-                        <div class="text-muted small mb-2">Brgy. {{ $incident->barangay }}</div>
-                        <div class="escalation-note">
-                            Escalated by <strong>{{ $incident->escalatedBy->name ?? 'a responder' }}</strong> at {{ $incident->escalated_at?->format('g:i A') ?? '-' }}<br>
-                            {{ $incident->escalation_reason }}
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    @endif
 </div>
 
 <div class="modal-backdrop-custom" id="incidentModal">
@@ -140,6 +136,17 @@
             <button class="btn btn-light" onclick="closeModal('rejectModal')">Cancel</button>
             <button class="btn" style="background:#B02A37;color:#fff;" onclick="confirmReject()">Confirm Reject</button>
         </div>
+    </div>
+</div>
+
+<div class="modal-backdrop-custom" id="dispatchModal">
+    <div class="modal-box">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h4 id="dispatchModalTitle">Dispatch Responder</h4>
+            <button class="btn-close" onclick="closeModal('dispatchModal')"></button>
+        </div>
+        <div class="small text-muted mb-3">Select a standby responder to assign to this incident.</div>
+        <div id="dispatchModalBody"></div>
     </div>
 </div>
 
@@ -228,11 +235,12 @@ function confirmReject() {
 
     function openDispatch(incidentId) {
         dispatchTargetId = incidentId;
+        document.getElementById('dispatchModalTitle').textContent = `Dispatch — Incident #${incidentId}`;
 
         let rows = standbyResponders.map(r => `
-            <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
-                <div>
-                    <strong>${r.name}</strong><br>
+            <div class="dispatch-responder-row">
+                <div class="responder-info">
+                    <strong>${r.name}</strong>
                     <small class="text-muted">${r.responder_profile?.team ?? ''} · ${r.responder_profile?.vehicle ?? ''}</small>
                 </div>
                 <button class="btn btn-sm" style="background:#1CA97B; color:#fff;" onclick="confirmDispatch(${r.id})">Assign</button>

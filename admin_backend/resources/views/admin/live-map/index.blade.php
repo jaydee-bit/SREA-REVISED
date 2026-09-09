@@ -38,11 +38,11 @@
     <div class="text-success small fw-bold">● LIVE TRACKING</div>
 </div>
 
-<div id="criticalAlertBanner" style="display:none;" class="d-flex justify-content-between align-items-center mb-3" role="alert">
+<div id="criticalAlertBanner" class="d-none d-flex justify-content-between align-items-center mb-3" role="alert">
     <div class="d-flex align-items-center gap-2">
         <span style="font-size:20px;">🚨</span>
         <div>
-            <strong id="alertBannerTitle">Critical Incident Reported</strong>
+            <strong id="alertBannerTitle">New Incident Reported</strong>
             <div id="alertBannerSubtitle" class="small"></div>
         </div>
     </div>
@@ -332,16 +332,39 @@
             osc.stop(now + i * 0.6 + 0.5);
         }
     }
+
+    let bannerDismissTimer = null;
+
     function showAlertBanner(title, subtitle) {
         document.getElementById('alertBannerTitle').textContent = title;
         document.getElementById('alertBannerSubtitle').textContent = subtitle;
-        document.getElementById('criticalAlertBanner').style.display = 'flex';
+        document.getElementById('criticalAlertBanner').classList.remove('d-none');
         playSiren();
+
+        // Auto-dismiss after 8 seconds so it doesn't sit there permanently.
+        // Reset on every new call, so a second incident arriving mid-countdown
+        // gives the admin a fresh 8 seconds rather than cutting it short.
+        if (bannerDismissTimer) clearTimeout(bannerDismissTimer);
+        bannerDismissTimer = setTimeout(() => {
+            dismissAlertBanner();
+        }, 8000);
     }
-    function dismissAlertBanner() { document.getElementById('criticalAlertBanner').style.display = 'none'; }
+
+    function dismissAlertBanner() {
+        document.getElementById('criticalAlertBanner').classList.add('d-none');
+        if (bannerDismissTimer) {
+            clearTimeout(bannerDismissTimer);
+            bannerDismissTimer = null;
+        }
+    }
 
     // --- Real-time: listen for map changes via Reverb/Echo ---
-    if (window.Echo) {
+    // window.Echo is set up by a deferred Vite module script, which can
+    // still be initializing when this inline script runs — so we can't
+    // just check `if (window.Echo)` once; if it's not ready yet, that
+    // check silently fails and none of these listeners ever get attached,
+    // with no error anywhere. Poll until it genuinely exists instead.
+    function registerLiveMapListeners() {
         window.Echo.channel('live-map')
             .listen('.incident.reported', (e) => {
                 const inc = e.incident;
@@ -389,6 +412,17 @@
                 // page-load loop does (see addResponderMarker above).
                 addResponderMarker(e.incident);
             });
+    }
+
+    if (window.Echo) {
+        registerLiveMapListeners();
+    } else {
+        const waitForEcho = setInterval(() => {
+            if (window.Echo) {
+                clearInterval(waitForEcho);
+                registerLiveMapListeners();
+            }
+        }, 100);
     }
 </script>
 @endsection

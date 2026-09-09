@@ -15,16 +15,15 @@ class ResponseMonitorController extends Controller
             ->orderByDesc('reported_at')
             ->get();
 
-        $waiting = $incidents->where('status', 'Pending')->values();
+        $waiting = $incidents->where('status', 'Escalated')->values();
         $active = $incidents->where('status', 'Responding')->values();
-        $escalated = $incidents->where('status', 'Escalated')->values();
 
         $standbyResponders = User::where('role', 'responder')
             ->whereHas('responderProfile', fn ($q) => $q->where('current_status', 'Standby'))
             ->with('responderProfile')
             ->get();
 
-        return view('admin.response-monitor.index', compact('incidents', 'waiting', 'active', 'escalated', 'standbyResponders'));
+        return view('admin.response-monitor.index', compact('incidents', 'waiting', 'active', 'standbyResponders'));
     }
 
     public function dispatch(Request $request, Incident $incident)

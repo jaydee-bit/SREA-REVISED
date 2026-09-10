@@ -6,8 +6,6 @@ import 'package:latlong2/latlong.dart'; // ✅ ADDED
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import 'alert_detail_screen.dart';
-import 'announcements_screen.dart';
-import 'announcement_detail_screen.dart';
 import 'traffic_advisories_screen.dart';
 import 'traffic_advisory_detail_screen.dart';
 import 'incident_report_detail_screen.dart';
@@ -15,7 +13,7 @@ import '../models/incident_report_model.dart';
 
 class NotificationItem {
   final String id;
-  final String type; // 'alert', 'announcement', 'traffic', 'incident_status'
+  final String type; // 'alert', 'traffic', 'incident_status'
   final String title;
   final String message;
   final DateTime timestamp;
@@ -59,13 +57,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final api = ApiService();
       final results = await Future.wait([
         api.getAlerts(),
-        api.getAnnouncements(),
         api.getTrafficAdvisories(),
       ]);
 
       final alerts = results[0] as List<dynamic>;
-      final announcements = results[1] as List<dynamic>;
-      final traffic = results[2] as List<dynamic>;
+      final traffic = results[1] as List<dynamic>;
 
       final List<NotificationItem> items = [];
 
@@ -83,25 +79,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         );
       }
 
-      // 2. Announcements (all)
-      for (var ann in announcements) {
-        items.add(
-          NotificationItem(
-            id: 'announcement_${ann['id']}',
-            type: 'announcement',
-            title: ann['title'] ?? '',
-            message: ann['body'] ?? '',
-            timestamp: DateTime.parse(
-              ann['published_at'] ??
-                  ann['created_at'] ??
-                  DateTime.now().toIso8601String(),
-            ),
-            rawData: ann,
-          ),
-        );
-      }
-
-      // 3. Traffic advisories (all)
+      // 2. Traffic advisories (all)
       for (var adv in traffic) {
         items.add(
           NotificationItem(
@@ -115,7 +93,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         );
       }
 
-      // 4. Incident status notifications from NotificationService
+      // 3. Incident status notifications from NotificationService
       final appNotifications = NotificationService().notifications;
       for (var appNotif in appNotifications) {
         if (appNotif.type == 'incident_status') {
@@ -174,25 +152,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         context,
         MaterialPageRoute(
           builder: (_) => AlertDetailScreen(alert: item.rawData!),
-        ),
-      );
-    } else if (item.type == 'announcement' && item.rawData != null) {
-      final announcement = Announcement(
-        id: item.rawData!['id'],
-        title: item.rawData!['title'] ?? '',
-        body: item.rawData!['body'] ?? '',
-        publishedAt: DateTime.parse(
-          item.rawData!['published_at'] ??
-              item.rawData!['created_at'] ??
-              DateTime.now().toIso8601String(),
-        ),
-        barangay: item.rawData!['barangay'],
-        imageUrl: item.rawData!['image_url'],
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AnnouncementDetailScreen(announcement: announcement),
         ),
       );
     } else if (item.type == 'traffic' && item.rawData != null) {
@@ -338,9 +297,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   switch (item.type) {
                     case 'alert':
                       icon = Icons.warning_amber_rounded;
-                      break;
-                    case 'announcement':
-                      icon = Icons.campaign_rounded;
                       break;
                     case 'traffic':
                       icon = Icons.traffic_rounded;

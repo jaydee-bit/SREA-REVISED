@@ -41,7 +41,8 @@ void main() async {
 }
 
 void _addPushToNotificationList(RemoteMessage message) {
-  final id = message.data['alert_id'] ??
+  final id =
+      message.data['alert_id'] ??
       message.data['advisory_id'] ??
       DateTime.now().millisecondsSinceEpoch.toString();
 

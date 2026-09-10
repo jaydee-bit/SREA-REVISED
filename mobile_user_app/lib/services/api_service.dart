@@ -39,11 +39,6 @@ class ApiService {
     return response.data;
   }
 
-  Future<List<dynamic>> getAnnouncements() async {
-    final response = await _dio.get('/user/announcements');
-    return response.data;
-  }
-
   Future<List<dynamic>> getTrafficAdvisories() async {
     final response = await _dio.get('/user/traffic');
     return response.data;
@@ -97,7 +92,10 @@ class ApiService {
       print('FCM token: $token');
       if (token == null) return;
 
-      final response = await _dio.post('/public/devices/register', data: {'fcm_token': token});
+      final response = await _dio.post(
+        '/public/devices/register',
+        data: {'fcm_token': token},
+      );
       print('Device registration response: ${response.statusCode}');
     } catch (e) {
       print('FCM registration error: $e');

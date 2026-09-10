@@ -13,7 +13,6 @@ class AboutScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _AboutAppBar(),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -68,22 +67,18 @@ class AboutScreen extends StatelessWidget {
                                   icon: Icons.location_on_outlined,
                                   iconColor: SreaColors.primary,
                                   title: 'Real-time Location Alerts',
-                                  description: 'Send emergency alerts with your GPS location for faster dispatch.',
+                                  description:
+                                      'Send emergency alerts with your GPS location for faster dispatch.',
                                 ),
                                 SizedBox(height: 10),
                                 _FeatureItem(
                                   icon: Icons.monitor_heart_outlined,
                                   iconColor: Color(0xFF34C759),
                                   title: 'Incident Monitoring',
-                                  description: 'Admins can monitor, verify, and coordinate responses in real time.',
+                                  description:
+                                      'Admins can monitor, verify, and coordinate responses in real time.',
                                 ),
-                                SizedBox(height: 10),
-                                _FeatureItem(
-                                  icon: Icons.campaign_outlined,
-                                  iconColor: Color(0xFFFF6B2B),
-                                  title: 'Community Announcements',
-                                  description: 'Residents receive timely advisories and traffic updates.',
-                                ),
+                                // ❌ Community Announcements removed
                               ],
                             ),
                           ),
@@ -110,31 +105,6 @@ class AboutScreen extends StatelessWidget {
   }
 }
 
-class _AboutAppBar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      color: SreaColors.primary,
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: SreaColors.textOnPrimary, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          Text(
-            'About Us',
-            style: SreaText.titleLarge(context).copyWith(
-              color: SreaColors.textOnPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -151,7 +121,7 @@ class _HeroHeader extends StatelessWidget {
           bottomRight: Radius.circular(28),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       child: Column(
         children: [
           Image.asset('assets/images/mdrrmo_logo.jpg', height: 110, width: 110),
@@ -166,7 +136,11 @@ class _HeroHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.location_on_outlined, size: 14, color: SreaColors.textOnPrimary),
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: SreaColors.textOnPrimary,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'San Rafael, Bulacan',
@@ -191,10 +165,9 @@ class _HeroHeader extends StatelessWidget {
           SizedBox(height: SreaSpacing.sm(context)),
           Text(
             'A fast, reliable, and efficient mobile platform for\nemergency reporting and community safety.',
-            style: SreaText.bodySmall(context).copyWith(
-              color: SreaColors.bottomNavInactive,
-              height: 1.5,
-            ),
+            style: SreaText.bodySmall(
+              context,
+            ).copyWith(color: SreaColors.bottomNavInactive, height: 1.5),
             textAlign: TextAlign.center,
           ),
         ],
@@ -225,7 +198,11 @@ class _AboutSection extends StatelessWidget {
         color: SreaColors.surface,
         borderRadius: SreaRadius.card,
         boxShadow: [
-          BoxShadow(color: SreaColors.shadowColor, blurRadius: 12, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: SreaColors.shadowColor,
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -310,10 +287,9 @@ class _FeatureItem extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   description,
-                  style: SreaText.label(context).copyWith(
-                    color: SreaColors.textSecondary,
-                    height: 1.5,
-                  ),
+                  style: SreaText.label(
+                    context,
+                  ).copyWith(color: SreaColors.textSecondary, height: 1.5),
                 ),
               ],
             ),
@@ -340,7 +316,11 @@ class _LocationCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.map_outlined, size: 36, color: SreaColors.primary),
+              const Icon(
+                Icons.map_outlined,
+                size: 36,
+                color: SreaColors.primary,
+              ),
               const SizedBox(height: 8),
               Text(
                 'San Rafael, Bulacan',
@@ -387,9 +367,9 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: SreaText.label(context).copyWith(
-                  color: SreaColors.textSecondary,
-                ),
+                style: SreaText.label(
+                  context,
+                ).copyWith(color: SreaColors.textSecondary),
               ),
               const SizedBox(height: 2),
               Text(
@@ -433,10 +413,9 @@ class _ContactFooter extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Municipality of San Rafael, Bulacan\nMDRRMO Office',
-            style: SreaText.label(context).copyWith(
-              color: SreaColors.bottomNavInactive,
-              height: 1.6,
-            ),
+            style: SreaText.label(
+              context,
+            ).copyWith(color: SreaColors.bottomNavInactive, height: 1.6),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -444,10 +423,9 @@ class _ContactFooter extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '© 2025 San Rafael MDRRMO. All rights reserved.',
-            style: SreaText.label(context).copyWith(
-              color: SreaColors.bottomNavInactive,
-              fontSize: 11,
-            ),
+            style: SreaText.label(
+              context,
+            ).copyWith(color: SreaColors.bottomNavInactive, fontSize: 11),
             textAlign: TextAlign.center,
           ),
         ],

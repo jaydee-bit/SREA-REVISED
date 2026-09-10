@@ -20,13 +20,7 @@
 
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="btn-group btn-group-sm" id="statusTabs">
-            <button type="button" class="btn btn-success active" data-filter="all">All</button>
-            <button type="button" class="btn btn-outline-secondary" data-filter="Deployed">Deployed</button>
-            <button type="button" class="btn btn-outline-secondary" data-filter="Standby">Standby</button>
-            <button type="button" class="btn btn-outline-secondary" data-filter="Off Duty">Off Duty</button>
-        </div>
+    <div class="card-header d-flex justify-content-end">
         <input type="text" id="responderSearch" class="form-control form-control-sm" style="width:220px;" placeholder="Search responders...">
     </div>
     <div class="card-body p-0">
@@ -54,31 +48,15 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const tabs = document.querySelectorAll('#statusTabs button');
         const rows = document.querySelectorAll('#respondersTable tbody tr');
         const search = document.getElementById('responderSearch');
 
-        function applyFilters() {
-            const activeFilter = document.querySelector('#statusTabs button.active').dataset.filter;
+        search.addEventListener('input', function () {
             const query = search.value.toLowerCase();
             rows.forEach(row => {
-                const matchesStatus = activeFilter === 'all' || row.dataset.status === activeFilter;
-                const matchesSearch = row.textContent.toLowerCase().includes(query);
-                row.style.display = (matchesStatus && matchesSearch) ? '' : 'none';
-            });
-        }
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active', 'btn-success'));
-                tabs.forEach(t => t.classList.add('btn-outline-secondary'));
-                tab.classList.remove('btn-outline-secondary');
-                tab.classList.add('active', 'btn-success');
-                applyFilters();
+                row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
             });
         });
-
-        search.addEventListener('input', applyFilters);
     });
 </script>
 @endsection

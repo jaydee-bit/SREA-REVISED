@@ -6,10 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/srea_sidebar.dart';
 import '../services/notification_service.dart';
 import 'alerts_screen.dart';
-import 'announcements_screen.dart';
 import 'traffic_advisories_screen.dart';
 import 'report_incident_screen.dart';
 import 'my_reports_screen.dart';
+import 'about_screen.dart';
 import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,17 +27,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final Map<String, Widget> _screens = {
     '/report': const ReportIncidentScreen(),
     '/alerts': const AlertsScreen(),
-    '/announcements': const AnnouncementsScreen(),
     '/traffic': const TrafficAdvisoriesScreen(),
     '/my-reports': const MyReportsScreen(),
+    '/about': const AboutScreen(),
   };
 
   static const Map<String, String> _routeTitles = {
     '/report': 'Report Emergency',
     '/alerts': 'Alerts',
-    '/announcements': 'Announcements',
     '/traffic': 'Traffic Advisories',
     '/my-reports': 'My Reports',
+    '/about': 'About',
   };
 
   @override

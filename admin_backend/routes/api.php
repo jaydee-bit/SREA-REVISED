@@ -3,7 +3,6 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\IncidentController as ResponderIncidentController;
 use App\Http\Controllers\Api\User\AlertController;
-use App\Http\Controllers\Api\User\AnnouncementController;
 use App\Http\Controllers\Api\User\TrafficController;
 use App\Http\Controllers\Api\User\EmergencyCallController;
 use App\Http\Controllers\Api\User\UserIncidentController;
@@ -28,8 +27,6 @@ Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 // ✅ PUBLIC CONTENT (no auth required – for anonymous resident app)
 Route::get('/user/alerts', [AlertController::class, 'index']);
 Route::get('/user/alerts/{id}', [AlertController::class, 'show']);
-Route::get('/user/announcements', [AnnouncementController::class, 'index']);
-Route::get('/user/announcements/{id}', [AnnouncementController::class, 'show']);
 Route::get('/user/traffic', [TrafficController::class, 'index']);
 Route::get('/user/traffic/{id}', [TrafficController::class, 'show']);
 

@@ -56,6 +56,7 @@
                         <th>Type</th>
                         <th>Barangay</th>
                         <th>Reporter</th>
+                        <th>Contact</th>
                         <th>Status</th>
                         <th>Assigned</th>
                         <th>Reported</th>
@@ -63,7 +64,7 @@
                     </tr>
                 </thead>
                 <tbody id="incidentsTableBody">
-                    <tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">Loading…</td></tr>
                 </tbody>
             </table>
         </div>
@@ -106,9 +107,6 @@
 <div id="toast" style="display:none; position:fixed; bottom:24px; right:24px; z-index:2000; min-width:300px; padding:16px 20px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.2); color:#fff; font-weight:500;"></div>
 
 <script>
-    // Holds only the currently-displayed page's incidents — View/Reject
-    // only ever act on a row that's visibly on screen right now, so this
-    // is all they need (no more giant all-incidents array).
     let currentPageIncidents = [];
     let currentPage = 1;
     let currentStatus = 'all';
@@ -132,7 +130,7 @@
     function renderRows(incidents) {
         const tbody = document.getElementById('incidentsTableBody');
         if (incidents.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No incidents found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No incidents found.</td></tr>`;
             return;
         }
         tbody.innerHTML = incidents.map(inc => `
@@ -142,6 +140,7 @@
                 <td>${inc.type}</td>
                 <td>${inc.barangay}</td>
                 <td>${inc.reporter_name ?? inc.reporter?.name ?? 'Anonymous'}</td>
+                <td>${inc.contact_number ?? '-'}</td>
                 <td>${statusBadge(inc)}</td>
                 <td>${inc.assigned_to?.name ?? '-'}</td>
                 <td>${new Date(inc.reported_at).toLocaleString()}</td>
@@ -186,7 +185,7 @@
             })
             .catch(() => {
                 document.getElementById('incidentsTableBody').innerHTML =
-                    `<tr><td colspan="9" class="text-center text-danger py-4">Failed to load incidents.</td></tr>`;
+                    `<tr><td colspan="10" class="text-center text-danger py-4">Failed to load incidents.</td></tr>`;
             });
     }
 
@@ -213,7 +212,7 @@
                 currentSearch = e.target.value;
                 currentPage = 1;
                 loadIncidents();
-            }, 300); // debounce so it doesn't fire a request on every keystroke
+            }, 300);
         });
     });
 
@@ -266,7 +265,7 @@
         .then(() => {
             document.getElementById('rejectModal').classList.remove('show');
             showToast(`Incident #${rejectTargetId} rejected successfully.`);
-            setTimeout(() => loadIncidents(), 1000); // reload current page's data, not a full page refresh
+            setTimeout(() => loadIncidents(), 1000);
         })
         .catch(() => {
             document.getElementById('rejectError').textContent = 'Something went wrong. Please try again.';

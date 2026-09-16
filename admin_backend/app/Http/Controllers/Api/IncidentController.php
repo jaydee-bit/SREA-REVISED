@@ -85,10 +85,6 @@ class IncidentController extends Controller
         $incident->status = 'Responding';
         $incident->save();
 
-        // Load the relation the admin Live Map needs to build the
-        // responder's pin (name, vehicle, current coordinates) without
-        // a second round trip — broadcast the same shape the frontend
-        // already knows how to render from the initial page load.
         $incident->load('assignedTo.responderProfile');
         event(new \App\Events\ResponderAssigned($incident->toArray()));
 
@@ -100,8 +96,6 @@ class IncidentController extends Controller
 
     /**
      * Update the authenticated responder's current GPS location.
-     * Called periodically (every ~30s) by the responder app while
-     * they have an active/assigned incident.
      * POST /api/responder/location
      */
     public function updateLocation(Request $request)
@@ -125,9 +119,6 @@ class IncidentController extends Controller
             'current_longitude' => $validated['longitude'],
         ]);
 
-        // Only broadcast if this responder is actively assigned —
-        // no point pushing location for idle responders, since the
-        // frontend only renders markers for assigned responders.
         $hasActiveAssignment = Incident::where('assigned_to', $request->user()->id)
             ->where('status', 'Responding')
             ->exists();
@@ -168,9 +159,6 @@ class IncidentController extends Controller
             \App\Models\ResponderProfile::where('user_id', $previousResponderId)
                 ->update(['current_latitude' => null, 'current_longitude' => null]);
 
-            // Incident stays visible (it's Escalated, still active) — only
-            // the responder's own pin should disappear, since they're no
-            // longer assigned to anything.
             event(new \App\Events\ResponderUnassigned($previousResponderId));
         }
 
@@ -181,16 +169,17 @@ class IncidentController extends Controller
     }
 
     /**
-     * Resolve an incident – with type, description, notes, and optional reporter name.
+     * Resolve an incident – type, description, and resolution notes.
+     * reporter_name is no longer accepted here — it's already required
+     * and captured at submission time, so it's left untouched.
      * POST /api/responder/incidents/{uuid}/resolve
      */
     public function resolve(Request $request, $uuid)
     {
         $validated = $request->validate([
-            'type' => 'required|string|in:Fire,Medical,Flood,Accident,Calamity,Other',
+            'type' => 'required|string|in:Fire,Medical,Flood,Accident,Calamity,Maternal,Other',
             'description' => 'required|string|min:10',
             'resolution_notes' => 'required|string|min:10',
-            'reporter_name' => 'nullable|string|max:255',
         ]);
 
         $incident = Incident::where('uuid', $uuid)->firstOrFail();
@@ -198,7 +187,7 @@ class IncidentController extends Controller
         $incident->type = $validated['type'];
         $incident->description = $validated['description'];
         $incident->resolution_notes = $validated['resolution_notes'];
-        $incident->reporter_name = $validated['reporter_name'] ?? null;
+        // reporter_name intentionally left untouched — already set at submission
 
         $incident->status = 'Resolved';
         $incident->resolved_at = now();
@@ -223,7 +212,6 @@ class IncidentController extends Controller
      */
     public function reject(Request $request, $uuid)
     {
-
         $validated = $request->validate([
             'reason' => 'required|string|min:10',
         ]);

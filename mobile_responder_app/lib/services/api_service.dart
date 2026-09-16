@@ -136,7 +136,6 @@ class ApiService {
     required String type,
     required String description,
     required String resolutionNotes,
-    String? reporterName,
   }) async {
     await _dio.post(
       '/responder/incidents/$uuid/resolve',
@@ -144,7 +143,6 @@ class ApiService {
         'type': type,
         'description': description,
         'resolution_notes': resolutionNotes,
-        'reporter_name': reporterName,
       },
     );
   }
@@ -160,7 +158,10 @@ class ApiService {
   }
 
   Future<void> addResponderNotes(String uuid, String notes) async {
-    await _dio.post('/responder/incidents/$uuid/notes', data: {'notes': notes});
+    await _dio.post(
+      '/responder/incidents/$uuid/notes',
+      data: {'responder_notes': notes},
+    );
   }
 
   // ==================== PROFILE IMAGE ====================

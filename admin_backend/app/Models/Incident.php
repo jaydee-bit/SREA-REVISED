@@ -16,7 +16,7 @@ class Incident extends Model
         'uuid',
         'user_id',
         'reporter_name',
-        
+        'contact_number',
         'type',
         'description',
         'photo_path',

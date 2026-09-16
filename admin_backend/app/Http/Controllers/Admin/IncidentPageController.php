@@ -74,16 +74,17 @@ class IncidentPageController extends Controller
 
         $callback = function () use ($incidents) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['ID', 'Type', 'Barangay', 'Reporter', 'Status', 'Reported At']);
-            foreach ($incidents as $inc) {
-                fputcsv($file, [
-                    $inc->id,
-                    $inc->type,
-                    $inc->barangay,
-                    $inc->reporter_name ?? 'Anonymous',
-                    $inc->status,
-                    $inc->reported_at->format('M j, Y g:i A'),
-                ]);
+           fputcsv($file, ['ID', 'Type', 'Barangay', 'Reporter', 'Contact', 'Status', 'Reported At']);
+           foreach ($incidents as $inc) {
+               fputcsv($file, [
+                   $inc->id,
+                   $inc->type,
+                   $inc->barangay,
+                   $inc->reporter_name ?? 'Anonymous',
+                   $inc->contact_number ?? '-',
+                   $inc->status,
+                   $inc->reported_at->format('M j, Y g:i A'),
+               ]);
             }
             fclose($file);
         };

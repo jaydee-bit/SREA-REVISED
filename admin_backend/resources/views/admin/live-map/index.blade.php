@@ -295,7 +295,7 @@
         document.getElementById('incModalBody').innerHTML = `
             <div class="bg-light rounded p-2 mb-2">
                 <strong>${inc.barangay}</strong><br>
-                <small class="text-muted">Reporter: ${inc.reporter_name ?? 'Anonymous'}<br>Address: ${inc.address ?? '-'}<br>Status: ${inc.status}</small>
+                <small class="text-muted">Reporter: ${inc.reporter_name}<br>Contact: ${inc.contact_number}<br>Address: ${inc.address ?? '-'}<br>Status: ${inc.status}</small>
             </div>
             <div class="small mb-2"><strong>Description</strong><br>${inc.description ?? '-'}</div>
             ${escalationHtml}

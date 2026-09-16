@@ -419,6 +419,28 @@ class _IncidentReportDetailScreenState
                     ),
                   ],
                 ),
+                // Contact Number (if any)
+                if (report.contactNumber != null &&
+                    report.contactNumber!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.phone_outlined,
+                        size: 16,
+                        color: SreaColors.textHint,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Contact: ${report.contactNumber}',
+                        style: SreaText.bodySmall(
+                          context,
+                        ).copyWith(color: SreaColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 4),
                 // ─── Location – Stacked ────────────────────────────────
                 Row(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:srea_shared/srea_shared.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -23,6 +24,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isFetchingLocation = false;
+
+  // ─── Reporter info ────────────────────────────────────────
+  final _nameController = TextEditingController();
+  final _contactController = TextEditingController();
 
   // Reporter media
   File? _reporterImage;
@@ -1334,6 +1339,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   void dispose() {
     _mapController.dispose();
     _faceDetector.close();
+    _nameController.dispose();
+    _contactController.dispose();
     super.dispose();
   }
 
@@ -1479,6 +1486,23 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     _moveMapToLocation(latLng);
   }
 
+  // ─── Validators ──────────────────────────────
+
+  String? _validateContactNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Contact number is required';
+    }
+    final cleaned = value.trim();
+    if (cleaned.length != 11) {
+      return 'Contact number must be 11 digits';
+    }
+    final phRegex = RegExp(r'^09\d{9}$');
+    if (!phRegex.hasMatch(cleaned)) {
+      return 'Must start with 09 (e.g. 09171234567)';
+    }
+    return null;
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: SreaColors.error),
@@ -1555,6 +1579,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   // ─── Submit ──────────────────────────────────────────────────────────
 
   Future<void> _submitReport() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
     if (_selectedLatLng == null) {
       _showError('Please share your location');
       return;
@@ -1597,6 +1624,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       final barangay = _detectedBarangay ?? '';
 
       final Map<String, dynamic> requestData = {
+        'reporter_name': _nameController.text.trim(),
+        'contact_number': _contactController.text.trim(),
         'latitude': _selectedLatLng!.latitude,
         'longitude': _selectedLatLng!.longitude,
         'address': _selectedAddress,
@@ -1639,6 +1668,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         status: incidentData['status'],
         reportedAt: DateTime.parse(incidentData['reported_at']),
         assignedToName: incidentData['assigned_to']?['name'] ?? null,
+        reporterName: incidentData['reporter_name'] ?? _nameController.text.trim(),
+        contactNumber: incidentData['contact_number'] ?? _contactController.text.trim(),
       );
       if (!mounted) return;
 
@@ -1652,6 +1683,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         _selectedLatLng = null;
         _selectedAddress = '';
         _detectedBarangay = null;
+        _nameController.clear();
+        _contactController.clear();
       });
 
       Navigator.pushAndRemoveUntil(
@@ -1717,6 +1750,48 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ─── 1. LOCATION ──────────────────────────────────────────
+                // ─── 0. REPORTER INFO ──────────────────────
+                const _SectionHeader(title: 'Your Information'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    hintText: 'Juan Dela Cruz',
+                    filled: true,
+                    fillColor: SreaColors.surface,
+                    border: OutlineInputBorder(borderRadius: SreaRadius.card),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _contactController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 11,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(11),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Contact Number',
+                    hintText: '09171234567',
+                    counterText: '',
+                    filled: true,
+                    fillColor: SreaColors.surface,
+                    border: OutlineInputBorder(borderRadius: SreaRadius.card),
+                  ),
+                  validator: _validateContactNumber,
+                ),
+                const SizedBox(height: 16),
+
+                // ─── 1. LOCATION ────────────────────────
                 const _SectionHeader(title: 'Location'),
                 const SizedBox(height: 8),
                 Text(

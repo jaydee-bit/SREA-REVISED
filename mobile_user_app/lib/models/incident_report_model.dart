@@ -14,6 +14,7 @@ class IncidentReport {
   final DateTime reportedAt;
   final String? assignedToName;
   final String? reporterName;
+  final String? contactNumber;
   final String? responderNotes;
   final String? escalationReason;
   final String? escalatedBy;
@@ -38,6 +39,7 @@ class IncidentReport {
     required this.reportedAt,
     this.assignedToName,
     this.reporterName,
+    this.contactNumber,
     this.responderNotes,
     this.escalationReason,
     this.escalatedBy,
@@ -77,6 +79,7 @@ class IncidentReport {
       reportedAt: DateTime.parse(json['reported_at']),
       assignedToName: json['assigned_to']?['name'] ?? null,
       reporterName: json['reporter_name'] ?? null,
+      contactNumber: json['contact_number'] ?? null,
       responderNotes: json['responder_notes'],
       escalationReason: json['escalation_reason'],
       escalatedBy: json['escalated_by']?.toString(),

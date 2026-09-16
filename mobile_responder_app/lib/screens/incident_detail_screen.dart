@@ -15,6 +15,7 @@ const List<String> incidentTypes = [
   'Flood',
   'Accident',
   'Calamity',
+  'Maternal',
   'Other',
 ];
 
@@ -436,7 +437,6 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
   void _showResolveBottomSheet() {
     final descriptionController = TextEditingController();
     final notesController = TextEditingController();
-    final reporterNameController = TextEditingController();
     String selectedType = incidentTypes.first;
     final _formKey = GlobalKey<FormState>();
     bool _autovalidate = false;
@@ -565,28 +565,6 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                       if (_autovalidate) setSheetState(() {});
                     },
                   ),
-                  const SizedBox(height: 16),
-
-                  // ─── Reporter Name ──────────────────────────────────────────
-                  Text(
-                    'Reporter Name (optional)',
-                    style: SreaText.label(context).copyWith(
-                      color: SreaColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: reporterNameController,
-                    decoration: InputDecoration(
-                      hintText: 'If the reporter provides their name...',
-                      prefixIcon: Icon(
-                        Icons.person_outline,
-                        color: SreaColors.textHint,
-                      ),
-                      border: OutlineInputBorder(borderRadius: SreaRadius.card),
-                    ),
-                  ),
                   const SizedBox(height: 24),
 
                   // ─── Buttons ─────────────────────────────────────────────
@@ -609,10 +587,6 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                               final description = descriptionController.text
                                   .trim();
                               final notes = notesController.text.trim();
-                              final reporterName =
-                                  reporterNameController.text.trim().isNotEmpty
-                                  ? reporterNameController.text.trim()
-                                  : null;
 
                               Navigator.pop(context);
                               final success = await _performUpdate(
@@ -621,7 +595,6 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                   type: selectedType,
                                   description: description,
                                   resolutionNotes: notes,
-                                  reporterName: reporterName,
                                 ),
                                 'Incident resolved successfully',
                                 SreaColors.success,
@@ -1293,6 +1266,26 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                   ],
                 ],
               ),
+              if (_incident.contactNumber != null &&
+                  _incident.contactNumber!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.phone_outlined,
+                      size: 14,
+                      color: SreaColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _incident.contactNumber!,
+                      style: SreaText.bodySmall(
+                        context,
+                      ).copyWith(color: SreaColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
 
               // ─── Barangay ─────────────────────────────────────────────

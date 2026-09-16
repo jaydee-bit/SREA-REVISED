@@ -13,6 +13,7 @@ class IncidentReport {
   final String status;
   final DateTime reportedAt;
   final String reporterName;
+  final String? contactNumber;
   final String? assignedToId;
   final String? responderNotes;
   final String? escalationReason;
@@ -37,6 +38,7 @@ class IncidentReport {
     required this.status,
     required this.reportedAt,
     required this.reporterName,
+    this.contactNumber,
     this.assignedToId,
     this.responderNotes,
     this.escalationReason,
@@ -56,6 +58,8 @@ class IncidentReport {
       name = json['reporter']['name'] ?? 'Anonymous';
     } else if (json['reporterName'] != null) {
       name = json['reporterName'] as String;
+    } else if (json['reporter_name'] != null) {
+      name = json['reporter_name'] as String;
     }
 
     String? assignedId;
@@ -95,6 +99,7 @@ class IncidentReport {
           ? DateTime.parse(json['reported_at'])
           : DateTime.now(),
       reporterName: name,
+      contactNumber: json['contact_number'],
       assignedToId: assignedId,
       responderNotes: json['responder_notes'],
       escalationReason: json['escalation_reason'],
@@ -132,6 +137,7 @@ class IncidentReport {
       'status': status,
       'reported_at': reportedAt.toIso8601String(),
       'reporterName': reporterName,
+      'contact_number': contactNumber,
       'assigned_to': assignedToId,
       'responder_notes': responderNotes,
       'escalation_reason': escalationReason,
@@ -158,6 +164,7 @@ class IncidentReport {
     String? status,
     DateTime? reportedAt,
     String? reporterName,
+    String? contactNumber,
     String? assignedToId,
     String? responderNotes,
     String? escalationReason,
@@ -182,6 +189,7 @@ class IncidentReport {
       status: status ?? this.status,
       reportedAt: reportedAt ?? this.reportedAt,
       reporterName: reporterName ?? this.reporterName,
+      contactNumber: contactNumber ?? this.contactNumber,
       assignedToId: assignedToId ?? this.assignedToId,
       responderNotes: responderNotes ?? this.responderNotes,
       escalationReason: escalationReason ?? this.escalationReason,

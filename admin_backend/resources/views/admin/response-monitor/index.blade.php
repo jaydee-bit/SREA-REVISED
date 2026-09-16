@@ -35,7 +35,7 @@
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <div class="fw-bold">{{ $incident->type }}</div>
-                            <div class="text-muted small mb-2">#{{ $incident->id }} &nbsp;·&nbsp; Brgy. {{ $incident->barangay }} &nbsp;·&nbsp; Reporter: {{ $incident->reporter_name ?? 'Anonymous' }}</div>
+                            <div class="text-muted small mb-2">#{{ $incident->id }} &nbsp;·&nbsp; Brgy. {{ $incident->barangay }} &nbsp;·&nbsp; Reporter: {{ $incident->reporter_name }} &nbsp;·&nbsp; 📞 {{ $incident->contact_number }}</div>
                         </div>
                         @if ($incident->photo_path)
                             <img src="{{ $incident->photo_path }}" class="media-thumb" alt="Incident photo">
@@ -70,7 +70,7 @@
                         <span class="fw-bold">#{{ $incident->id }}</span>
                         <span class="badge badge-status-{{ $incident->status }}">{{ $incident->status }}</span>
                     </div>
-                    <div class="text-muted small mb-3">{{ strtoupper($incident->type) }} &nbsp;·&nbsp; 📍 {{ $incident->address }} &nbsp;·&nbsp; Reporter: {{ $incident->reporter_name ?? 'Anonymous' }}</div>
+                    <div class="text-muted small mb-3">{{ strtoupper($incident->type) }} &nbsp;·&nbsp; 📍 {{ $incident->address }} &nbsp;·&nbsp; Reporter: {{ $incident->reporter_name }} &nbsp;·&nbsp; 📞 {{ $incident->contact_number }}</div>
 
                     @if ($incident->assignedTo)
                         <div class="bg-light rounded p-3">
@@ -224,7 +224,8 @@ function confirmReject() {
             ${mediaHtml}
             <div class="bg-light rounded p-2 mb-2">
                 <strong>${inc.type} — ${inc.barangay}</strong><br>
-                <small class="text-muted">Reporter: ${inc.reporter_name ?? 'Anonymous'}<br>
+                <small class="text-muted">Reporter: ${inc.reporter_name}<br>
+                Contact: ${inc.contact_number}<br>
                 Address: ${inc.address ?? '-'}<br>
                 Status: ${inc.status}</small>
             </div>

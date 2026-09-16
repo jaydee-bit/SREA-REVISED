@@ -11,7 +11,7 @@
     .badge-status-OffDuty  { background:#E4E7ED; color:#5C6270; }
 </style>
 
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="mb-1">Responders</h2>
         <div class="text-muted">Manage MDRRMO rescue team members</div>

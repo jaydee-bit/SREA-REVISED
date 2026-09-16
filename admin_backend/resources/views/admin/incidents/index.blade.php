@@ -17,11 +17,12 @@
     .modal-backdrop-custom.show { display:flex; }
     .modal-box { background:#fff; border-radius:10px; width:440px; max-width:90vw; padding:24px; max-height:85vh; overflow-y:auto; }
     #incidentsTable td { vertical-align: middle; }
+    .page-btn.active { background:#1CA97B; color:#fff; border-color:#1CA97B; }
 </style>
 
 <div class="container-fluid">
 
-    <div class="d-flex justify-content-between align-items-start mb-3">
+    <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
             <h2 class="mb-1">Incidents</h2>
             <div class="text-muted">All reported incidents in San Rafael</div>
@@ -61,40 +62,14 @@
                         <th>Action</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach ($incidents as $incident)
-                        <tr data-status="{{ $incident->status }}">
-                            <td>
-                                @if ($incident->photo_path)
-                                    <img src="{{ $incident->photo_path }}" class="media-thumb" alt="photo">
-                                @elseif ($incident->video_path)
-                                    <div class="media-thumb d-flex align-items-center justify-content-center">🎥</div>
-                                @else
-                                    <div class="media-thumb d-flex align-items-center justify-content-center text-muted">—</div>
-                                @endif
-                            </td>
-                            <td>#{{ $incident->id }}</td>
-                            <td>{{ $incident->type }}</td>
-                            <td>{{ $incident->barangay }}</td>
-                            <td>{{ $incident->reporter_name ?? 'Anonymous' }}</td>
-                            <td>
-                                <span class="badge badge-status-{{ $incident->status }}">{{ $incident->status }}</span>
-                                @if ($incident->nearby_count > 0)
-                                    <span class="badge badge-nearby">⚠️ {{ $incident->nearby_count }} nearby</span>
-                                @endif
-                            </td>
-                            <td>{{ $incident->assignedTo->name ?? '-' }}</td>
-                            <td>{{ $incident->reported_at->diffForHumans() }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-light" onclick="viewDescription({{ $incident->id }})">View</button>
-                                @if ($incident->status === 'Pending')
-                                    <button class="btn btn-sm" style="background:#F8D7DA; color:#B02A37;" onclick="openReject({{ $incident->id }})">Reject</button>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
+                <tbody id="incidentsTableBody">
+                    <tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>
                 </tbody>
             </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <div class="small text-muted" id="paginationSummary"></div>
+            <div class="btn-group btn-group-sm" id="paginationControls"></div>
         </div>
     </div>
 </div>
@@ -131,35 +106,115 @@
 <div id="toast" style="display:none; position:fixed; bottom:24px; right:24px; z-index:2000; min-width:300px; padding:16px 20px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.2); color:#fff; font-weight:500;"></div>
 
 <script>
-    const incidents = @json($incidents);
+    // Holds only the currently-displayed page's incidents — View/Reject
+    // only ever act on a row that's visibly on screen right now, so this
+    // is all they need (no more giant all-incidents array).
+    let currentPageIncidents = [];
+    let currentPage = 1;
+    let currentStatus = 'all';
+    let currentSearch = '';
+    let searchDebounce = null;
+
+    function statusBadge(incident) {
+        let html = `<span class="badge badge-status-${incident.status}">${incident.status}</span>`;
+        if (incident.nearby_count > 0) {
+            html += ` <span class="badge badge-nearby">⚠️ ${incident.nearby_count} nearby</span>`;
+        }
+        return html;
+    }
+
+    function mediaThumb(incident) {
+        if (incident.photo_path) return `<img src="${incident.photo_path}" class="media-thumb" alt="photo">`;
+        if (incident.video_path) return `<div class="media-thumb d-flex align-items-center justify-content-center">🎥</div>`;
+        return `<div class="media-thumb d-flex align-items-center justify-content-center text-muted">—</div>`;
+    }
+
+    function renderRows(incidents) {
+        const tbody = document.getElementById('incidentsTableBody');
+        if (incidents.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No incidents found.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = incidents.map(inc => `
+            <tr>
+                <td>${mediaThumb(inc)}</td>
+                <td>#${inc.id}</td>
+                <td>${inc.type}</td>
+                <td>${inc.barangay}</td>
+                <td>${inc.reporter_name ?? inc.reporter?.name ?? 'Anonymous'}</td>
+                <td>${statusBadge(inc)}</td>
+                <td>${inc.assigned_to?.name ?? '-'}</td>
+                <td>${new Date(inc.reported_at).toLocaleString()}</td>
+                <td>
+                    <button class="btn btn-sm btn-light" onclick="viewDescription(${inc.id})">View</button>
+                    ${inc.status === 'Pending' ? `<button class="btn btn-sm" style="background:#F8D7DA; color:#B02A37;" onclick="openReject(${inc.id})">Reject</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderPagination(meta) {
+        document.getElementById('paginationSummary').textContent =
+            `Showing ${meta.from ?? 0}–${meta.to ?? 0} of ${meta.total} incidents`;
+
+        const controls = document.getElementById('paginationControls');
+        let html = '';
+        html += `<button class="btn btn-outline-secondary page-btn" ${meta.current_page <= 1 ? 'disabled' : ''} onclick="goToPage(${meta.current_page - 1})">Prev</button>`;
+        html += `<button class="btn btn-outline-secondary page-btn active" disabled>${meta.current_page} / ${meta.last_page}</button>`;
+        html += `<button class="btn btn-outline-secondary page-btn" ${meta.current_page >= meta.last_page ? 'disabled' : ''} onclick="goToPage(${meta.current_page + 1})">Next</button>`;
+        controls.innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadIncidents();
+    }
+
+    function loadIncidents() {
+        const params = new URLSearchParams({
+            page: currentPage,
+            status: currentStatus,
+            search: currentSearch,
+        });
+
+        fetch(`{{ route('incidents.data') }}?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                currentPageIncidents = data.data;
+                renderRows(currentPageIncidents);
+                renderPagination(data);
+            })
+            .catch(() => {
+                document.getElementById('incidentsTableBody').innerHTML =
+                    `<tr><td colspan="9" class="text-center text-danger py-4">Failed to load incidents.</td></tr>`;
+            });
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const tabs = document.querySelectorAll('#statusTabs button');
-        const rows = document.querySelectorAll('#incidentsTable tbody tr');
-        const search = document.getElementById('incidentSearch');
+        loadIncidents();
 
-        function applyFilters() {
-            const activeFilter = document.querySelector('#statusTabs button.active').dataset.filter;
-            const query = search.value.toLowerCase();
-
-            rows.forEach(row => {
-                const matchesStatus = activeFilter === 'all' || row.dataset.status === activeFilter;
-                const matchesSearch = row.textContent.toLowerCase().includes(query);
-                row.style.display = (matchesStatus && matchesSearch) ? '' : 'none';
-            });
-        }
-
-        tabs.forEach(tab => {
+        document.querySelectorAll('#statusTabs button').forEach(tab => {
             tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active', 'btn-success'));
-                tabs.forEach(t => t.classList.add('btn-outline-secondary'));
+                document.querySelectorAll('#statusTabs button').forEach(t => {
+                    t.classList.remove('active', 'btn-success');
+                    t.classList.add('btn-outline-secondary');
+                });
                 tab.classList.remove('btn-outline-secondary');
                 tab.classList.add('active', 'btn-success');
-                applyFilters();
+                currentStatus = tab.dataset.filter;
+                currentPage = 1;
+                loadIncidents();
             });
         });
 
-        search.addEventListener('input', applyFilters);
+        document.getElementById('incidentSearch').addEventListener('input', (e) => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                currentSearch = e.target.value;
+                currentPage = 1;
+                loadIncidents();
+            }, 300); // debounce so it doesn't fire a request on every keystroke
+        });
     });
 
     function showToast(message, type = 'success') {
@@ -171,7 +226,7 @@
     }
 
     function viewDescription(incidentId) {
-        const inc = incidents.find(i => i.id === incidentId);
+        const inc = currentPageIncidents.find(i => i.id === incidentId);
         if (!inc) return;
         document.getElementById('descModalTitle').textContent = `#${inc.id} — Description`;
         document.getElementById('descModalBody').innerHTML = `<div class="small">${inc.description ?? 'No description available.'}</div>`;
@@ -211,7 +266,7 @@
         .then(() => {
             document.getElementById('rejectModal').classList.remove('show');
             showToast(`Incident #${rejectTargetId} rejected successfully.`);
-            setTimeout(() => window.location.reload(), 1000);
+            setTimeout(() => loadIncidents(), 1000); // reload current page's data, not a full page refresh
         })
         .catch(() => {
             document.getElementById('rejectError').textContent = 'Something went wrong. Please try again.';

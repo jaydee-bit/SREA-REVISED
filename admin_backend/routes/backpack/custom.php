@@ -21,7 +21,8 @@ Route::group([
 ], function () { // custom admin routes
     Route::crud('user', 'UserCrudController');
     Route::get('incidents', [\App\Http\Controllers\Admin\IncidentPageController::class, 'index'])->name('incidents.index');
-Route::post('incidents/{incident:id}/reject', [\App\Http\Controllers\Admin\IncidentPageController::class, 'reject'])->name('incidents.reject');
+    Route::get('incidents/data', [\App\Http\Controllers\Admin\IncidentPageController::class, 'data'])->name('incidents.data');
+    Route::post('incidents/{incident:id}/reject', [\App\Http\Controllers\Admin\IncidentPageController::class, 'reject'])->name('incidents.reject');
     Route::get('response-monitor', [\App\Http\Controllers\Admin\ResponseMonitorController::class, 'index'])->name('response-monitor.index');
     Route::get('live-map', [\App\Http\Controllers\Admin\LiveMapController::class, 'index'])->name('live-map.index');
     Route::get('responders', [\App\Http\Controllers\Admin\ResponderPageController::class, 'index'])->name('responders.index');

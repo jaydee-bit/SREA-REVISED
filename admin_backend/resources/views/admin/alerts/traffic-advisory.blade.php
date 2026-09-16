@@ -15,7 +15,7 @@
     .modal-box { background:#fff; border-radius:10px; width:420px; max-width:90vw; padding:24px; }
 </style>
 
-<h2 class="mb-1">Send Alert & Announcement</h2>
+<h2 class="mb-1">Traffic Advisory</h2>
 <div class="text-muted mb-3">Broadcast disaster alerts and manage road warnings for San Rafael</div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">

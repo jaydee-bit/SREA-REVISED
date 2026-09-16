@@ -10,15 +10,42 @@ class IncidentPageController extends Controller
 {
     public function index()
     {
-        $incidents = Incident::with(['reporter', 'assignedTo'])
-            ->orderByDesc('reported_at')
-            ->get();
+        return view('admin.incidents.index');
+    }
 
-        $incidents->each(function ($incident) {
+    /**
+     * JSON data endpoint for the Incidents table — powers AJAX
+     * pagination, status filtering, and search without a full
+     * page reload.
+     * GET /admin/incidents/data
+     */
+    public function data(Request $request)
+    {
+        $query = Incident::with(['reporter', 'assignedTo'])
+            ->orderByDesc('reported_at');
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $term = $request->search;
+            $query->where(function ($q) use ($term) {
+                $q->where('type', 'like', "%{$term}%")
+                  ->orWhere('barangay', 'like', "%{$term}%")
+                  ->orWhere('reporter_name', 'like', "%{$term}%")
+                  ->orWhere('id', 'like', "%{$term}%");
+            });
+        }
+
+        $incidents = $query->paginate(10);
+
+        $incidents->getCollection()->each(function ($incident) {
             $incident->nearby_count = $incident->findNearbyReports()->count();
         });
 
-        return view('admin.incidents.index', compact('incidents'));
+        return response()->json($incidents);
+    
     }
 
     public function reject(Request $request, Incident $incident)

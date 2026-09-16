@@ -26,11 +26,9 @@
     .media-placeholder { width:100%; height:140px; background:#EEF0F4; border-radius:10px 10px 0 0; display:flex; align-items:center; justify-content:center; color:#8A8F98; font-size:13px; }
     .also-reported-item { border-bottom:1px solid #EEF0F4; padding:6px 0; font-size:13px; }
     .escalation-note { background:#FFF3CD; border:1px solid #F0C36D; border-radius:8px; padding:10px; font-size:13px; margin-bottom:10px; }
-    #criticalAlertBanner { background:#FDE8E8; border:1px solid #D63939; color:#7A1F1F; border-radius:8px; padding:12px 16px; animation: alertPulse 1.5s ease-in-out infinite; }
-    @keyframes alertPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(214,57,57,.4); } 50% { box-shadow: 0 0 0 8px rgba(214,57,57,0); } }
 </style>
 
-<div class="d-flex justify-content-between align-items-start mb-1">
+<div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="mb-1">Live Map</h2>
         <div class="text-muted">Real-time incident & responder locations</div>
@@ -38,24 +36,18 @@
     <div class="text-success small fw-bold">● LIVE TRACKING</div>
 </div>
 
-<div id="criticalAlertBanner" class="d-none d-flex justify-content-between align-items-center mb-3" role="alert">
-    <div class="d-flex align-items-center gap-2">
-        <span style="font-size:20px;">🚨</span>
-        <div>
-            <strong id="alertBannerTitle">New Incident Reported</strong>
-            <div id="alertBannerSubtitle" class="small"></div>
-        </div>
-    </div>
-    <button class="btn btn-sm btn-light" onclick="dismissAlertBanner()">Dismiss</button>
-</div>
-
 <div class="row mt-3">
     <div class="col-lg-8">
-        <div class="btn-group btn-group-sm map-layer-toggle mb-2" id="layerToggle">
-            <button type="button" class="btn btn-outline-secondary active" data-layer="all">All</button>
-            <button type="button" class="btn btn-outline-secondary" data-layer="incidents">Incidents</button>
-            <button type="button" class="btn btn-outline-secondary" data-layer="responders">Responders</button>
-            <button type="button" class="btn btn-outline-secondary" data-layer="barangays">Barangays</button>
+        <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+            <div class="btn-group btn-group-sm map-layer-toggle" id="layerToggle">
+                <button type="button" class="btn btn-outline-secondary active" data-layer="all">All</button>
+                <button type="button" class="btn btn-outline-secondary" data-layer="incidents">Incidents</button>
+                <button type="button" class="btn btn-outline-secondary" data-layer="responders">Responders</button>
+            </div>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="toggleBarangays">
+                <label class="form-check-label small text-muted" for="toggleBarangays">Show Barangays</label>
+            </div>
         </div>
         <div style="position:relative;">
             <div id="liveMap"></div>
@@ -67,7 +59,7 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h5 class="mb-3">Legend</h5>
-                <div class="mb-2">🖼️ Photo attached &nbsp; 🎥 Video attached &nbsp; 🔴 No media</div>
+                <div class="mb-2">🖼️ Photo attached</div>
                 <div>🚑 Ambulance &nbsp; 🚒 Fire Truck &nbsp; 🚐 Rescue Van</div>
             </div>
         </div>
@@ -118,7 +110,6 @@
     </div>
 </div>
 
-@vite('resources/js/app.js')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     const barangays = @json($barangays);
@@ -230,18 +221,33 @@
 
     incidents.forEach(inc => addResponderMarker(inc));
 
-    barangayLayer.addTo(map); incidentLayer.addTo(map); responderLayer.addTo(map);
+    // Barangays start hidden by default — it's now an optional, independent
+    // overlay (see the "Show Barangays" switch) rather than part of the
+    // main Incidents/Responders view, so the map looks clean by default.
+    incidentLayer.addTo(map); responderLayer.addTo(map);
 
     document.querySelectorAll('#layerToggle button').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('#layerToggle button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            map.removeLayer(barangayLayer); map.removeLayer(incidentLayer); map.removeLayer(responderLayer);
+            map.removeLayer(incidentLayer); map.removeLayer(responderLayer);
             const layer = btn.dataset.layer;
-            if (layer === 'all' || layer === 'barangays') barangayLayer.addTo(map);
             if (layer === 'all' || layer === 'incidents') incidentLayer.addTo(map);
             if (layer === 'all' || layer === 'responders') responderLayer.addTo(map);
+            // Barangays is independent of this group now — whatever the
+            // switch is currently set to stays as-is when All/Incidents/
+            // Responders is clicked, instead of being reset each time.
         });
+    });
+
+    // Barangays: optional overlay, off by default (unchecked on page load,
+    // matching barangayLayer not being added to the map above).
+    document.getElementById('toggleBarangays').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            barangayLayer.addTo(map);
+        } else {
+            map.removeLayer(barangayLayer);
+        }
     });
 
     let routeLayer = null;
@@ -315,48 +321,10 @@
         openModal('responderModal');
     }
 
-    let audioCtx;
-    function playSiren() {
-        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        const now = audioCtx.currentTime;
-        for (let i = 0; i < 3; i++) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, now + i * 0.6);
-            osc.frequency.linearRampToValueAtTime(660, now + i * 0.6 + 0.3);
-            gain.gain.setValueAtTime(0.15, now + i * 0.6);
-            gain.gain.linearRampToValueAtTime(0, now + i * 0.6 + 0.5);
-            osc.connect(gain).connect(audioCtx.destination);
-            osc.start(now + i * 0.6);
-            osc.stop(now + i * 0.6 + 0.5);
-        }
-    }
-
-    let bannerDismissTimer = null;
-
-    function showAlertBanner(title, subtitle) {
-        document.getElementById('alertBannerTitle').textContent = title;
-        document.getElementById('alertBannerSubtitle').textContent = subtitle;
-        document.getElementById('criticalAlertBanner').classList.remove('d-none');
-        playSiren();
-
-        // Auto-dismiss after 8 seconds so it doesn't sit there permanently.
-        // Reset on every new call, so a second incident arriving mid-countdown
-        // gives the admin a fresh 8 seconds rather than cutting it short.
-        if (bannerDismissTimer) clearTimeout(bannerDismissTimer);
-        bannerDismissTimer = setTimeout(() => {
-            dismissAlertBanner();
-        }, 8000);
-    }
-
-    function dismissAlertBanner() {
-        document.getElementById('criticalAlertBanner').classList.add('d-none');
-        if (bannerDismissTimer) {
-            clearTimeout(bannerDismissTimer);
-            bannerDismissTimer = null;
-        }
-    }
+    // Siren + alert banner (playSiren/showAlertBanner/dismissAlertBanner) are
+    // handled globally in blank.blade.php so they fire on every admin page,
+    // not just this one. Only map-specific behavior (markers, badges) lives
+    // here — see the .incident.reported listener below.
 
     // --- Real-time: listen for map changes via Reverb/Echo ---
     // window.Echo is set up by a deferred Vite module script, which can
@@ -368,7 +336,9 @@
         window.Echo.channel('live-map')
             .listen('.incident.reported', (e) => {
                 const inc = e.incident;
-                showAlertBanner('New Incident Reported', `#${inc.id} — ${inc.type} in ${inc.barangay} just came in.`);
+                // Siren + banner for this event are handled globally by
+                // blank.blade.php's listener on the same channel/event —
+                // this handler only needs to update the map itself.
 
                 // Fallback index just needs to be unique-ish for the
                 // centroid-offset math — reuse the current marker count.
@@ -425,4 +395,4 @@
         }, 100);
     }
 </script>
-@endsection
+@endsection 

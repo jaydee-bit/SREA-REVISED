@@ -8,7 +8,6 @@ class TrafficAdvisory {
   final String title;
   final String description;
   final String location;
-  final SreaBadgeType severity;
   final DateTime publishedAt;
   final DateTime? effectiveFrom;
   final DateTime? effectiveTo;
@@ -18,7 +17,6 @@ class TrafficAdvisory {
     required this.title,
     required this.description,
     required this.location,
-    required this.severity,
     required this.publishedAt,
     this.effectiveFrom,
     this.effectiveTo,
@@ -52,18 +50,12 @@ class _TrafficAdvisoriesScreenState extends State<TrafficAdvisoriesScreen> {
     try {
       final api = ApiService();
       final data = await api.getTrafficAdvisories();
-      final severityMap = {
-        'high': SreaBadgeType.high,
-        'medium': SreaBadgeType.medium,
-        'low': SreaBadgeType.low,
-      };
       final list = data.map((json) {
         return TrafficAdvisory(
           id: json['id'],
           title: json['title'] ?? '',
           description: json['description'] ?? '',
           location: json['location'] ?? '',
-          severity: severityMap[json['severity']] ?? SreaBadgeType.low,
           publishedAt: DateTime.parse(
             json['created_at'] ?? DateTime.now().toIso8601String(),
           ),
@@ -189,7 +181,7 @@ class _TrafficAdvisoriesScreenState extends State<TrafficAdvisoriesScreen> {
                 itemCount: _advisories.length,
                 itemBuilder: (context, index) {
                   final adv = _advisories[index];
-                  final color = _getSeverityColor(adv.severity);
+                  final color = SreaColors.primary;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -222,41 +214,13 @@ class _TrafficAdvisoriesScreenState extends State<TrafficAdvisoriesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        adv.title,
-                                        style: SreaText.bodyLarge(
-                                          context,
-                                        ).copyWith(fontWeight: FontWeight.w700),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // ✅ Consistent badge style
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: color.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: color.withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        adv.severity.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: color,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  adv.title,
+                                  style: SreaText.bodyLarge(
+                                    context,
+                                  ).copyWith(fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -311,19 +275,6 @@ class _TrafficAdvisoriesScreenState extends State<TrafficAdvisoriesScreen> {
         ),
       ),
     );
-  }
-
-  Color _getSeverityColor(SreaBadgeType severity) {
-    switch (severity) {
-      case SreaBadgeType.high:
-        return SreaColors.critical;
-      case SreaBadgeType.medium:
-        return SreaColors.warning;
-      case SreaBadgeType.low:
-        return SreaColors.low;
-      default:
-        return SreaColors.textSecondary;
-    }
   }
 
   String _formatDate(DateTime date) {

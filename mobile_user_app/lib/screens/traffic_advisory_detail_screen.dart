@@ -36,22 +36,8 @@ class TrafficAdvisoryDetailScreen extends StatelessWidget {
     return months[month - 1];
   }
 
-  Color _getSeverityColor(SreaBadgeType severity) {
-    switch (severity) {
-      case SreaBadgeType.high:
-        return SreaColors.critical;
-      case SreaBadgeType.medium:
-        return SreaColors.warning;
-      case SreaBadgeType.low:
-        return SreaColors.low;
-      default:
-        return SreaColors.textSecondary;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final color = _getSeverityColor(advisory.severity);
     final hasLocation = advisory.location.isNotEmpty;
     final hasEffectivePeriod =
         advisory.effectiveFrom != null || advisory.effectiveTo != null;
@@ -80,54 +66,12 @@ class TrafficAdvisoryDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─── Title + Badge (same row) ──────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
-                    advisory.title,
-                    style: SreaText.headlineSmall(
-                      context,
-                    ).copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        advisory.severity.name.toUpperCase(),
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            // ─── Title ──────────────────────────────────────────────
+            Text(
+              advisory.title,
+              style: SreaText.headlineSmall(
+                context,
+              ).copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
 

@@ -150,8 +150,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 itemCount: _alerts.length,
                 itemBuilder: (context, index) {
                   final alert = _alerts[index];
-                  final level = alert['level']?.toLowerCase() ?? 'low';
-                  final color = _getLevelColor(level);
+                  final color = SreaColors.primary;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -183,41 +182,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        alert['title'] ?? 'Alert',
-                                        style: SreaText.bodyLarge(
-                                          context,
-                                        ).copyWith(fontWeight: FontWeight.w700),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // ✅ Consistent badge style
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: color.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: color.withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        level.toUpperCase(),
-                                        style: TextStyle(
-                                          color: color,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  alert['title'] ?? 'Alert',
+                                  style: SreaText.bodyLarge(
+                                    context,
+                                  ).copyWith(fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -282,20 +253,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
         ),
       ),
     );
-  }
-
-  Color _getLevelColor(String? level) {
-    switch (level?.toLowerCase()) {
-      case 'critical':
-      case 'high':
-        return SreaColors.critical;
-      case 'medium':
-        return SreaColors.warning;
-      case 'low':
-        return SreaColors.low;
-      default:
-        return SreaColors.textSecondary;
-    }
   }
 
   String _formatDate(dynamic dateString) {

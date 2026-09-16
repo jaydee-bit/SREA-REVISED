@@ -155,19 +155,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       );
     } else if (item.type == 'traffic' && item.rawData != null) {
-      final severityMap = {
-        'high': SreaBadgeType.high,
-        'medium': SreaBadgeType.medium,
-        'low': SreaBadgeType.low,
-      };
-      final severity =
-          severityMap[item.rawData!['severity']] ?? SreaBadgeType.low;
       final advisory = TrafficAdvisory(
         id: item.rawData!['id'],
         title: item.rawData!['title'] ?? '',
         description: item.rawData!['description'] ?? '',
         location: item.rawData!['location'] ?? '',
-        severity: severity,
         publishedAt: DateTime.parse(
           item.rawData!['created_at'] ?? DateTime.now().toIso8601String(),
         ),

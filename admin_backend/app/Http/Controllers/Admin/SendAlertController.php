@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Alert;
-use App\Models\Announcement;
 use App\Models\TrafficAdvisory;
 use Illuminate\Http\Request;
 
@@ -12,7 +11,6 @@ class SendAlertController extends Controller
 {
     public function index()
     {
-        $announcements = Announcement::with('creator')->latest()->get();
         $recentAdvisories = TrafficAdvisory::with('creator')->latest()->take(2)->get();
 
         $stats = [
@@ -20,7 +18,7 @@ class SendAlertController extends Controller
             'sent_today' => Alert::whereDate('created_at', today())->count(),
         ];
 
-        return view('admin.alerts.send', compact('announcements', 'recentAdvisories', 'stats'));
+        return view('admin.alerts.send', compact('recentAdvisories', 'stats'));
     }
 
     public function store(Request $request)

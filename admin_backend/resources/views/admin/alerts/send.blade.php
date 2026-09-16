@@ -13,7 +13,7 @@
     .badge-target { background:#E7EEFC; color:#2C5AC7; }
 </style>
 
-<h2 class="mb-1">Send Alert & Announcement</h2>
+<h2 class="mb-1">Send Alert</h2>
 <div class="text-muted mb-3">Broadcast disaster notifications to all users</div>
 
 <div class="alert-tabs d-inline-flex gap-2 border rounded p-1 mb-4" style="background:#F0F2F7;">
@@ -91,34 +91,6 @@
     </div>
 </div>
 
-<div class="card mt-3">
-    <div class="card-header">
-        <h6 class="mb-0">Announcements</h6>
-    </div>
-    <div class="card-body p-0">
-        <table class="table table-vcenter mb-0">
-            <thead>
-                <tr class="text-muted small text-uppercase">
-                    <th>Title</th><th>Body</th><th>Target</th><th>Posted By</th><th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($announcements as $a)
-                    <tr>
-                        <td class="fw-bold">{{ $a->title }}</td>
-                        <td class="small text-muted">{{ \Illuminate\Support\Str::limit($a->body, 60) }}</td>
-                        <td><span class="badge badge-target">{{ $a->barangay ?? 'All Barangays' }}</span></td>
-                        <td>{{ $a->creator->name ?? '-' }}</td>
-                        <td>{{ $a->created_at->format('M j, Y') }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="5" class="text-center text-muted small py-3">No announcements yet.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</div>
-
 <div id="toast" style="display:none; position:fixed; bottom:24px; right:24px; z-index:2000; min-width:300px; padding:16px 20px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.2); color:#fff; font-weight:500;"></div>
 
 <script>
@@ -128,7 +100,7 @@
         landslide: { title: 'Landslide Warning', message: 'LANDSLIDE WARNING: Ground movement detected in your barangay. Residents near slopes are advised to evacuate to designated safe areas.' },
         earthquake: { title: 'Earthquake Advisory', message: 'EARTHQUAKE ADVISORY: A significant earthquake has occurred. Check your surroundings for damage and avoid entering weakened structures.' },
         typhoon: { title: 'Typhoon Advisory', message: 'TYPHOON ADVISORY: A typhoon signal has been raised for our municipality. Secure your homes and prepare emergency supplies.' },
-        general: { title: 'Announcement', message: 'ANNOUNCEMENT: Please be advised of the following important update from MDRRMO San Rafael.' },
+        general: { title: 'General Advisory', message: 'Please be advised of the following important update from MDRRMO San Rafael.' },
     };
 
     document.querySelectorAll('#categoryButtons button').forEach(btn => {

@@ -45,22 +45,8 @@ class AlertDetailScreen extends StatelessWidget {
     return months[month - 1];
   }
 
-  Color _getLevelColor(String level) {
-    switch (level.toLowerCase()) {
-      case 'critical':
-      case 'high':
-        return SreaColors.critical;
-      case 'medium':
-        return SreaColors.warning;
-      default:
-        return SreaColors.low;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final level = alert['level']?.toString() ?? 'low';
-    final color = _getLevelColor(level);
     final isBarangaySpecific =
         alert['barangay'] != null && alert['barangay'].isNotEmpty;
     final formattedDateTime = _formatDateTime(alert['created_at']);
@@ -90,55 +76,13 @@ class AlertDetailScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Title + Badge (same row) ──────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      alert['title'] ?? '',
-                      style: SreaText.headlineSmall(context).copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: SreaColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: color.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          level.toUpperCase(),
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              // ─── Title ──────────────────────────────────────────────
+              Text(
+                alert['title'] ?? '',
+                style: SreaText.headlineSmall(context).copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: SreaColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 12),
 

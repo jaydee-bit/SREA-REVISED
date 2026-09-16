@@ -11,7 +11,7 @@
     .badge-role-System { background:#EEF0F4; color:#5C6270; }
 </style>
 
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="mb-1">Audit Trail</h2>
         <div class="text-muted">A log of every action taken across the system</div>

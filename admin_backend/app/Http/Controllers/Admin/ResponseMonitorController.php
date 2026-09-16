@@ -40,6 +40,14 @@ class ResponseMonitorController extends Controller
         $responder = User::find($request->responder_id);
         $responder->responderProfile()->update(['current_status' => 'Deployed']);
 
+        // Broadcast the same event/shape IncidentController::respond() uses
+        // when a responder accepts in-app, so admin-side dispatch behaves
+        // identically: the Live Map gets the responder's pin immediately,
+        // and the global siren for this incident stops — instead of silently
+        // drifting out of sync until someone refreshes the page.
+        $incident->load('assignedTo.responderProfile');
+        event(new \App\Events\ResponderAssigned($incident->toArray()));
+
         return response()->json(['ok' => true]);
     }
 }

@@ -15,8 +15,12 @@ use Backpack\CRUD\app\Library\Widget;
 class UserCrudController extends CrudController
 {
     use \Backpack\CRUD\app\Http\Controllers\Operations\ListOperation;
-    use \Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation;
-    use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
+    use \Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation {
+        store as traitStore;
+    }
+    use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation {
+        update as traitUpdate;
+    }
     use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\ShowOperation;
 
@@ -62,15 +66,49 @@ class UserCrudController extends CrudController
      * @return void
      */
     protected function setupCreateOperation()
-    {
-        CRUD::setValidation(UserRequest::class);
-        CRUD::setFromDb(); // set fields from db columns.
+{
+    CRUD::setValidation(UserRequest::class);
 
-        /**
-         * Fields can be defined using the fluent syntax:
-         * - CRUD::field('price')->type('number');
-         */
-    }
+    CRUD::field('name')
+        ->type('text')
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('email')
+        ->type('email')
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('password')
+        ->type('password')
+        ->hint('Leave blank to keep the current password (when editing).')
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('phone')
+        ->type('text')
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('role')
+        ->type('select_from_array')
+        ->options(['admin' => 'Admin', 'responder' => 'Responder'])
+        ->allows_null(false)
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('barangay')
+        ->type('text')
+        ->hint('The barangay this staff member is primarily assigned to.')
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('responder_team')
+        ->type('text')
+        ->label('Team')
+        ->hint('Only used when Role is Responder.')
+        ->wrapper(['class' => 'form-group col-md-6']);
+
+    CRUD::field('responder_vehicle')
+        ->type('text')
+        ->label('Vehicle')
+        ->hint('Only used when Role is Responder.')
+        ->wrapper(['class' => 'form-group col-md-6']);
+}
 
     /**
      * Define what happens when the Update operation is loaded.
@@ -81,5 +119,61 @@ class UserCrudController extends CrudController
     protected function setupUpdateOperation()
     {
         $this->setupCreateOperation();
+    }
+
+    /**
+     * Pulls the responder-only fields off the request before the User
+     * model gets saved (they aren't columns on `users`), then syncs a
+     * ResponderProfile row so creating a responder here is a single step
+     * instead of needing a second manual profile setup elsewhere.
+     */
+    private function syncResponderProfile(): array
+    {
+        $team = $this->crud->getRequest()->input('responder_team');
+        $vehicle = $this->crud->getRequest()->input('responder_vehicle');
+
+        $this->crud->getRequest()->request->remove('responder_team');
+        $this->crud->getRequest()->request->remove('responder_vehicle');
+
+        return ['team' => $team, 'vehicle' => $vehicle];
+    }
+
+    private function applyResponderProfile($entry, array $profileData): void
+    {
+        if (!$entry || $entry->role !== 'responder') {
+            return;
+        }
+
+        $existing = \App\Models\ResponderProfile::where('user_id', $entry->id)->first();
+
+        \App\Models\ResponderProfile::updateOrCreate(
+            ['user_id' => $entry->id],
+            [
+                'team' => $profileData['team'],
+                'vehicle' => $profileData['vehicle'],
+                // Only default to Standby on first creation — don't
+                // overwrite an existing responder's live status just
+                // because an admin edited their Team/Vehicle on Update.
+                'current_status' => $existing->current_status ?? 'Standby',
+            ]
+        );
+    }
+
+    public function store()
+    {
+        $profileData = $this->syncResponderProfile();
+        $response = $this->traitStore();
+        $this->applyResponderProfile($this->crud->entry, $profileData);
+
+        return $response;
+    }
+
+    public function update()
+    {
+        $profileData = $this->syncResponderProfile();
+        $response = $this->traitUpdate();
+        $this->applyResponderProfile($this->crud->entry, $profileData);
+
+        return $response;
     }
 }

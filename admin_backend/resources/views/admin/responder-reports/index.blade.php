@@ -10,7 +10,7 @@
 @section('content')
 <style>
     .badge-status-Resolved  { background:#D9F2E3; color:#137A45; }
-    .badge-status-Escalated { background:#FDE8E8; color:#B02A37; }
+    .badge-status-Escalated { background:#FFF3CD; color:#856404; }
     .badge-status-Responding { background:#E7E9FB; color:#4C51BF; }
     .report-photo-placeholder {
         width: 100%; height: 120px; background: #EEF0F4; border-radius: 8px;
@@ -80,8 +80,8 @@
         document.getElementById('reportModalTitle').textContent = `#${r.id} — ${r.type}`;
 
         let escalationHtml = r.status === 'Escalated' ? `
-            <div class="border rounded p-2 mb-2" style="background:#FDE8E8;">
-                <div class="small fw-bold text-danger">Escalated</div>
+            <div class="border rounded p-2 mb-2" style="background:#FFF3CD; border-color:#F0C36D !important;">
+                <div class="small fw-bold" style="color:#856404;">Escalated</div>
                 <div class="small">${r.escalation_reason ?? ''}</div>
                 <div class="small text-muted">By ${r.escalated_by?.name ?? '-'} · ${r.escalated_at ?? '-'}</div>
             </div>` : '';

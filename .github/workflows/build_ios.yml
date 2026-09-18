@@ -1,0 +1,42 @@
+name: Build iOS Debug - User App
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'mobile_user_app/**'
+      - '.github/workflows/build_ios.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile_user_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --debug --no-codesign
+
+      - name: Package as .ipa
+        run: |
+          mkdir -p Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r ../mobile_user_app_debug.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile_user_app-debug-ipa
+          path: mobile_user_app_debug.ipa
+          retention-days: 30

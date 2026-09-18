@@ -9,7 +9,7 @@
 
 <div class="text-muted small text-uppercase px-3 pt-3 pb-1">Field</div>
 <x-backpack::menu-item title="Live Map" icon="la la-map-marker" :link="backpack_url('live-map')" />
-@if (backpack_user() && backpack_user()->isSuperAdmin())
+    @if (backpack_user() && backpack_user()->isSuperAdmin())
 <x-backpack::menu-item title="Responders" icon="la la-user-shield" :link="backpack_url('responders')" />
 <x-backpack::menu-item title="Responders Reports" icon="la la-file-alt" :link="backpack_url('responders-reports')" />
 @endif

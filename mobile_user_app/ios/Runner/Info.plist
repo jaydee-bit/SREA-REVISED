@@ -2,18 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>SREA needs camera access to take photos of your valid ID</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SREA needs access to your photo library to upload your valid ID</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+
 	<key>NSCameraUsageDescription</key>
-	<string>SREA needs camera access to take photos of incidents.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SREA needs access to your photo library to upload incident photos.</string>
+	<string>SREA needs camera access to take photos and record videos of incidents.</string>
+
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SREA needs microphone access to record audio with incident videos.</string>
+
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SREA needs your location to accurately report the incident location.</string>
-	<true/>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -78,5 +78,3 @@
 	</array>
 </dict>
 </plist>
-
-

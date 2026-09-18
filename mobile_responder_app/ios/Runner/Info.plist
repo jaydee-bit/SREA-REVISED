@@ -4,6 +4,16 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+
+	<key>NSCameraUsageDescription</key>
+	<string>SREA Responder needs camera access to document incident responses.</string>
+
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SREA Responder needs access to your photo library to upload evidence photos.</string>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SREA Responder needs your location to update the Live Map while you're on duty.</string>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

@@ -18,10 +18,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _responderName = '';
   String _responderEmail = '';
-  String _responderRole = '';
   String _responderBadge = '';
   int _incidentsHandled = 0;
-  int _activeIncidents = 0;
   bool _isAdmin = false;
 
   @override
@@ -44,13 +42,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _responderName = userData['name'] ?? 'Unknown Responder';
         _responderEmail = userData['email'] ?? '';
-        _responderRole = userData['role'] ?? 'Emergency Responder';
         _isAdmin = userData['role'] == 'admin';
         final isVerified = userData['is_verified'] == true;
         _responderBadge = isVerified ? 'Verified Responder' : 'Responder';
 
         _incidentsHandled = (userData['incidents_handled'] ?? 0).toInt();
-        _activeIncidents = (userData['active_incidents'] ?? 0).toInt();
 
         _isLoading = false;
       });
@@ -252,156 +248,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 24),
+            // ─── Resolved count — tap to view resolved incidents ────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => Scaffold(
-                              backgroundColor: SreaColors.background,
-                              appBar: AppBar(
-                                backgroundColor: SreaColors.primary,
-                                elevation: 0,
-                                leading: IconButton(
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    color: SreaColors.textOnPrimary,
-                                  ),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
-                                title: Text(
-                                  'Resolved Incidents',
-                                  style: SreaText.titleLarge(
-                                    context,
-                                  ).copyWith(color: SreaColors.textOnPrimary),
-                                ),
-                              ),
-                              body: const IncidentListScreen(
-                                initialFilter: 'resolved',
-                                assignedToMe: true,
-                              ),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        backgroundColor: SreaColors.background,
+                        appBar: AppBar(
+                          backgroundColor: SreaColors.primary,
+                          elevation: 0,
+                          leading: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: SreaColors.textOnPrimary,
                             ),
+                            onPressed: () => Navigator.pop(context),
                           ),
-                        );
-                      },
-                      child: _StatCard(
-                        title: 'Resolved',
-                        value: _incidentsHandled.toString(),
-                        icon: Icons.check_circle_outline_rounded,
-                        color: SreaColors.buttonUpdate,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => Scaffold(
-                              backgroundColor: SreaColors.background,
-                              appBar: AppBar(
-                                backgroundColor: SreaColors.primary,
-                                elevation: 0,
-                                leading: IconButton(
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    color: SreaColors.textOnPrimary,
-                                  ),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
-                                title: Text(
-                                  'Assigned Incidents',
-                                  style: SreaText.titleLarge(
-                                    context,
-                                  ).copyWith(color: SreaColors.textOnPrimary),
-                                ),
-                              ),
-                              body: const IncidentListScreen(
-                                initialFilter: 'active',
-                                assignedToMe: true,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      child: _StatCard(
-                        title: 'Assigned',
-                        value: _activeIncidents.toString(),
-                        icon: Icons.pending_actions_rounded,
-                        color: SreaColors.medium,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SreaCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Role Information',
-                      style: SreaText.bodyLarge(context).copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: SreaColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: SreaColors.primaryLight,
-                            borderRadius: SreaRadius.input,
-                          ),
-                          child: Icon(
-                            _isAdmin
-                                ? Icons.admin_panel_settings_rounded
-                                : Icons.shield_outlined,
-                            size: 20,
-                            color: SreaColors.primary,
+                          title: Text(
+                            'Resolved Incidents',
+                            style: SreaText.titleLarge(
+                              context,
+                            ).copyWith(color: SreaColors.textOnPrimary),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _isAdmin ? 'Administrator' : 'Responder Role',
-                                style: SreaText.label(
-                                  context,
-                                ).copyWith(color: SreaColors.textSecondary),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _responderRole,
-                                style: SreaText.bodySmall(context).copyWith(
-                                  color: SreaColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                        body: const IncidentListScreen(
+                          initialFilter: 'resolved',
+                          assignedToMe: true,
                         ),
-                      ],
+                      ),
                     ),
-                  ],
+                  );
+                },
+                child: _StatCard(
+                  title: 'Resolved',
+                  value: _incidentsHandled.toString(),
+                  icon: Icons.check_circle_outline_rounded,
+                  color: SreaColors.buttonUpdate,
                 ),
               ),
             ),
+            const SizedBox(height: 24),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -435,6 +325,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: SreaColors.surface,

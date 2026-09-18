@@ -17,6 +17,7 @@ class Incident extends Model
         'user_id',
         'reporter_name',
         'contact_number',
+        'reporter_fcm_token',
         'type',
         'description',
         'photo_path',

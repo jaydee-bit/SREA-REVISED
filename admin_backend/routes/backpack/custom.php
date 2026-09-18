@@ -36,6 +36,11 @@ Route::group([
     Route::get('incidents/export/pdf', [\App\Http\Controllers\Admin\IncidentPageController::class, 'exportPdf'])->name('incidents.export.pdf');
     Route::post('send-alert/store', [\App\Http\Controllers\Admin\SendAlertController::class, 'store'])->name('send-alert.store');
 Route::post('traffic-advisory/store', [\App\Http\Controllers\Admin\TrafficAdvisoryController::class, 'store'])->name('traffic-advisory.store');
+
+    Route::get('assistance-requests', [\App\Http\Controllers\Admin\BarangayAssistanceRequestController::class, 'index'])->name('assistance-requests.index');
+    Route::post('incidents/{incident:id}/request-assistance', [\App\Http\Controllers\Admin\BarangayAssistanceRequestController::class, 'store'])->name('assistance-requests.store');
+    Route::post('assistance-requests/{assistance_request}/accept', [\App\Http\Controllers\Admin\BarangayAssistanceRequestController::class, 'accept'])->name('assistance-requests.accept');
+    Route::post('assistance-requests/{assistance_request}/decline', [\App\Http\Controllers\Admin\BarangayAssistanceRequestController::class, 'decline'])->name('assistance-requests.decline');
     
 }); // this should be the absolute last line of this file
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\Support\LogOptions;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class User extends Authenticatable
 {
-    use CrudTrait, HasApiTokens, HasFactory, Notifiable, LogsActivity;
+    use CrudTrait, HasApiTokens, HasFactory, Notifiable, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -20,6 +21,7 @@ class User extends Authenticatable
         'password',
         'role',
         'barangay',
+        'is_super_admin',
         'is_verified',
         'phone',
         'gender',
@@ -44,6 +46,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_verified' => 'boolean',
+            'is_super_admin' => 'boolean',
             'birth_date' => 'date',
         ];
     }
@@ -65,6 +68,18 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'admin' && $this->is_super_admin === true;
+    }
+
+    // Convenience: true only for a barangay-scoped admin, not for
+    // responders or a super admin.
+    public function isBarangayAdmin(): bool
+    {
+        return $this->role === 'admin' && $this->is_super_admin === false;
     }
 
     // Relationships

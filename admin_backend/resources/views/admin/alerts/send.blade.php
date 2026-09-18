@@ -44,13 +44,17 @@
                 <textarea id="alertMessage" class="form-control mb-3" rows="4" placeholder="Type your alert message here..."></textarea>
 
                 <div class="small text-muted mb-1">Target Area</div>
-                <select id="alertBarangay" class="form-select mb-3">
-                    <option>All Barangays - San Rafael</option>
-                    @foreach (\App\Models\Barangay::orderBy('name')->get() as $b)
-                        <option>{{ $b->name }}</option>
-                    @endforeach
-                </select>
-
+                @if (backpack_user()->is_super_admin)
+                    <select id="alertBarangay" class="form-select mb-3">
+                        <option>All Barangays - San Rafael</option>
+                        @foreach (\App\Models\Barangay::orderBy('name')->get() as $b)
+                            <option>{{ $b->name }}</option>
+                        @endforeach
+                    </select>
+                @else
+                    <input type="text" class="form-control mb-3" value="{{ backpack_user()->barangay }}" disabled>
+                    <input type="hidden" id="alertBarangay" value="{{ backpack_user()->barangay }}">
+                @endif
                 <button type="button" class="btn w-100" style="background:#1CA97B; color:#fff;" onclick="broadcastAlert()">📣 BROADCAST ALERT</button>
             </div>
         </div>

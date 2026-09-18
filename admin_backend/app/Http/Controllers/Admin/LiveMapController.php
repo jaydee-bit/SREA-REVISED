@@ -11,16 +11,32 @@ class LiveMapController extends Controller
 {
     public function index()
     {
-        $incidents = Incident::with(['reporter', 'assignedTo.responderProfile'])
+        $isSuperAdmin = backpack_user()->isSuperAdmin();
+        $barangay = backpack_user()->barangay;
+
+        $incidentQuery = Incident::with(['reporter', 'assignedTo.responderProfile'])
             ->whereIn('status', ['Pending', 'Responding', 'Escalated'])
-            ->orderByDesc('reported_at')
-            ->get();
+            ->orderByDesc('reported_at');
+
+        if (!$isSuperAdmin) {
+            $incidentQuery->where('barangay', $barangay);
+        }
+
+        $incidents = $incidentQuery->get();
 
         $incidents->each(function ($incident) {
             $incident->nearby_count = $incident->findNearbyReports()->count();
         });
 
-        $barangays = Barangay::all()->map(function ($b) use ($incidents) {
+        // A barangay admin only needs their own pin/boundary on the map —
+        // showing every barangay's marker (almost all reading zero) just
+        // clutters a view that's supposed to be scoped to their own turf.
+        $barangayQuery = Barangay::query();
+        if (!$isSuperAdmin) {
+            $barangayQuery->where('name', $barangay);
+        }
+
+        $barangays = $barangayQuery->get()->map(function ($b) use ($incidents) {
             return [
                 'name' => $b->name,
                 'lat' => (float) $b->latitude,
@@ -31,8 +47,12 @@ class LiveMapController extends Controller
             ];
         });
 
-        $responders = User::where('role', 'responder')->with('responderProfile')->get();
+        $responderQuery = User::where('role', 'responder')->with('responderProfile');
+        if (!$isSuperAdmin) {
+            $responderQuery->where('barangay', $barangay);
+        }
+        $responders = $responderQuery->get();
 
         return view('admin.live-map.index', compact('incidents', 'barangays', 'responders'));
     }
-}   
+}

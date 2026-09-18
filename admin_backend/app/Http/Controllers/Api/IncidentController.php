@@ -85,8 +85,19 @@ class IncidentController extends Controller
         $incident->status = 'Responding';
         $incident->save();
 
+        // Load the relation the admin Live Map needs to build the
+        // responder's pin (name, vehicle, current coordinates) without
+        // a second round trip — broadcast the same shape the frontend
+        // already knows how to render from the initial page load.
         $incident->load('assignedTo.responderProfile');
         event(new \App\Events\ResponderAssigned($incident->toArray()));
+
+        \App\Services\FcmNotifier::send(
+            $incident->reporter_fcm_token,
+            'Responder Dispatched',
+            "A responder is on the way for your report.",
+            ['incident_uuid' => $incident->uuid, 'status' => $incident->status]
+        );
 
         return response()->json([
             'message' => 'Incident assigned successfully',
@@ -96,6 +107,8 @@ class IncidentController extends Controller
 
     /**
      * Update the authenticated responder's current GPS location.
+     * Called periodically (every ~30s) by the responder app while
+     * they have an active/assigned incident.
      * POST /api/responder/location
      */
     public function updateLocation(Request $request)
@@ -119,6 +132,9 @@ class IncidentController extends Controller
             'current_longitude' => $validated['longitude'],
         ]);
 
+        // Only broadcast if this responder is actively assigned —
+        // no point pushing location for idle responders, since the
+        // frontend only renders markers for assigned responders.
         $hasActiveAssignment = Incident::where('assigned_to', $request->user()->id)
             ->where('status', 'Responding')
             ->exists();
@@ -159,8 +175,18 @@ class IncidentController extends Controller
             \App\Models\ResponderProfile::where('user_id', $previousResponderId)
                 ->update(['current_latitude' => null, 'current_longitude' => null]);
 
+            // Incident stays visible (it's Escalated, still active) — only
+            // the responder's own pin should disappear, since they're no
+            // longer assigned to anything.
             event(new \App\Events\ResponderUnassigned($previousResponderId));
         }
+
+        \App\Services\FcmNotifier::send(
+            $incident->reporter_fcm_token,
+            'Report Update',
+            "Your report has been escalated for further review.",
+            ['incident_uuid' => $incident->uuid, 'status' => $incident->status]
+        );
 
         return response()->json([
             'message' => 'Incident reassigned to admin successfully',
@@ -169,17 +195,16 @@ class IncidentController extends Controller
     }
 
     /**
-     * Resolve an incident – type, description, and resolution notes.
-     * reporter_name is no longer accepted here — it's already required
-     * and captured at submission time, so it's left untouched.
+     * Resolve an incident – with type, description, notes, and optional reporter name.
      * POST /api/responder/incidents/{uuid}/resolve
      */
     public function resolve(Request $request, $uuid)
     {
         $validated = $request->validate([
-            'type' => 'required|string|in:Fire,Medical,Flood,Accident,Calamity,Maternal,Other',
+            'type' => 'required|string|in:Fire,Medical,Flood,Accident,Calamity,Other',
             'description' => 'required|string|min:10',
             'resolution_notes' => 'required|string|min:10',
+            'reporter_name' => 'nullable|string|max:255',
         ]);
 
         $incident = Incident::where('uuid', $uuid)->firstOrFail();
@@ -187,7 +212,14 @@ class IncidentController extends Controller
         $incident->type = $validated['type'];
         $incident->description = $validated['description'];
         $incident->resolution_notes = $validated['resolution_notes'];
-        // reporter_name intentionally left untouched — already set at submission
+
+        // Only touch reporter_name if the responder actually provided one
+        // in this request. It's optional here, and its absence should not
+        // be treated as "clear the name" — that would silently wipe a name
+        // that was already stored from an earlier step.
+        if (array_key_exists('reporter_name', $validated)) {
+            $incident->reporter_name = $validated['reporter_name'];
+        }
 
         $incident->status = 'Resolved';
         $incident->resolved_at = now();
@@ -199,6 +231,13 @@ class IncidentController extends Controller
         }
 
         event(new \App\Events\IncidentClosed($incident->id, $incident->assigned_to, $incident->barangay));
+
+        \App\Services\FcmNotifier::send(
+            $incident->reporter_fcm_token,
+            'Incident Resolved',
+            "Your report has been marked as resolved.",
+            ['incident_uuid' => $incident->uuid, 'status' => $incident->status]
+        );
 
         return response()->json([
             'message' => 'Incident resolved successfully',
@@ -212,6 +251,7 @@ class IncidentController extends Controller
      */
     public function reject(Request $request, $uuid)
     {
+
         $validated = $request->validate([
             'reason' => 'required|string|min:10',
         ]);
@@ -235,6 +275,13 @@ class IncidentController extends Controller
         }
 
         event(new \App\Events\IncidentClosed($incident->id, $incident->assigned_to, $incident->barangay));
+
+        \App\Services\FcmNotifier::send(
+            $incident->reporter_fcm_token,
+            'Report Update',
+            "Your report was reviewed and rejected: {$validated['reason']}",
+            ['incident_uuid' => $incident->uuid, 'status' => $incident->status]
+        );
 
         return response()->json([
             'message' => 'Incident rejected successfully',

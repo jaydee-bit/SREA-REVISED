@@ -5,6 +5,8 @@
         'SREA' => backpack_url('dashboard'),
         'Dashboard' => false,
     ];
+    $admin = backpack_user();
+    $isSuper = $admin->is_super_admin;
 @endphp
 
 @section('content')
@@ -13,11 +15,17 @@
     <div class="d-flex justify-content-between align-items-start mb-4 pb-3" style="border-bottom: 1px solid #E4E7ED;">
         <div>
             <h2 class="mb-1">Overview</h2>
-            <div class="text-muted">Real-time situational awareness — San Rafael, Bulacan</div>
+            <div class="text-muted">
+                @if ($isSuper)
+                    Real-time situational awareness — San Rafael, Bulacan
+                @else
+                    Real-time situational awareness — Brgy. {{ $admin->barangay }}
+                @endif
+            </div>
         </div>
         <div>
             <a href="{{ backpack_url('send-alert') }}" class="btn btn-outline-secondary me-2">Broadcast</a>
-            <a href="{{ backpack_url('incident') }}" class="btn" style="background-color:#1CA97B; color:#fff;">View Incidents</a>
+            <a href="{{ backpack_url('incidents') }}" class="btn" style="background-color:#1CA97B; color:#fff;">View Incidents</a>
         </div>
     </div>
 
@@ -61,18 +69,26 @@
         </div>
     </div>
 
-    {{-- Stat cards row 2 --}}
+    {{--
+        Stat cards row 2 — "Barangays Covered" is a fixed municipality-wide
+        constant (always the same number no matter who's logged in), so it
+        adds nothing to a barangay-scoped view and is dropped entirely here.
+        "Total App Users" is relabeled to "Barangay Staff" for a barangay
+        admin since the number now reflects only their own barangay's staff,
+        not the whole municipality's — the original label would be
+        misleading once scoped.
+    --}}
     <div class="row row-cards mb-4">
-        <div class="col-sm-6 col-lg-4">
+        <div class="col-sm-6 col-lg-{{ $isSuper ? 4 : 6 }}">
             <div class="card">
                 <div class="card-body">
-                    <div class="text-muted small mb-1">Total App Users</div>
+                    <div class="text-muted small mb-1">{{ $isSuper ? 'Total App Users' : 'Barangay Staff' }}</div>
                     <div class="h1 mb-1">{{ number_format($totalUsers) }}</div>
-                    <div class="small text-muted">registered accounts</div>
+                    <div class="small text-muted">{{ $isSuper ? 'registered accounts' : 'admins & responders in your barangay' }}</div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-4">
+        <div class="col-sm-6 col-lg-{{ $isSuper ? 4 : 6 }}">
             <div class="card">
                 <div class="card-body">
                     <div class="text-muted small mb-1">Traffic Advisories</div>
@@ -81,15 +97,17 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-4">
-            <div class="card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">Barangays Covered</div>
-                    <div class="h1 mb-1">{{ $barangayCount }}</div>
-                    <div class="small text-muted">San Rafael</div>
+        @if ($isSuper)
+            <div class="col-sm-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="text-muted small mb-1">Barangays Covered</div>
+                        <div class="h1 mb-1">{{ $barangayCount }}</div>
+                        <div class="small text-muted">San Rafael</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
     </div>
 
     {{-- Charts row --}}

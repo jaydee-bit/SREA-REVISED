@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Barangay;
 use App\Models\Incident;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,18 @@ class IncidentPageController extends Controller
 {
     public function index()
     {
-        return view('admin.incidents.index');
+        $user = backpack_user();
+
+        // Options for the "Request Assistance" barangay picker. A super
+        // admin isn't scoped to one barangay and can request on behalf
+        // of any incident's own barangay (see BarangayAssistanceRequestController::store,
+        // which only blocks a non-super-admin from targeting their own
+        // barangay), so they get the full list rather than "all but mine".
+        $barangays = $user->isSuperAdmin()
+            ? Barangay::orderBy('name')->pluck('name')
+            : Barangay::where('name', '!=', $user->barangay)->orderBy('name')->pluck('name');
+
+        return view('admin.incidents.index', compact('barangays'));
     }
 
     /**
@@ -23,6 +35,10 @@ class IncidentPageController extends Controller
     {
         $query = Incident::with(['reporter', 'assignedTo'])
             ->orderByDesc('reported_at');
+
+        if (!backpack_user()->isSuperAdmin()) {
+            $query->where('barangay', backpack_user()->barangay);
+        }
 
         if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
@@ -50,6 +66,10 @@ class IncidentPageController extends Controller
 
     public function reject(Request $request, Incident $incident)
     {
+        if (!backpack_user()->isSuperAdmin() && $incident->barangay !== backpack_user()->barangay) {
+            return response()->json(['message' => 'Unauthorized. This incident is outside your barangay.'], 403);
+        }
+
         $request->validate([
             'reason' => 'required|string|min:10',
         ]);
@@ -64,7 +84,11 @@ class IncidentPageController extends Controller
 
     public function exportCsv()
     {
-        $incidents = Incident::orderByDesc('reported_at')->get();
+        $query = Incident::orderByDesc('reported_at');
+        if (!backpack_user()->isSuperAdmin()) {
+            $query->where('barangay', backpack_user()->barangay);
+        }
+        $incidents = $query->get();
 
         $filename = 'srea-incidents-' . now()->format('Y-m-d') . '.csv';
         $headers = [
@@ -94,7 +118,11 @@ class IncidentPageController extends Controller
 
     public function exportPdf()
     {
-        $incidents = Incident::orderByDesc('reported_at')->get();
+        $query = Incident::orderByDesc('reported_at');
+        if (!backpack_user()->isSuperAdmin()) {
+            $query->where('barangay', backpack_user()->barangay);
+        }
+        $incidents = $query->get();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.incidents.export-pdf', compact('incidents'));
 

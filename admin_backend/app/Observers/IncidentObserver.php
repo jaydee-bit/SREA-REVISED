@@ -21,6 +21,19 @@ class IncidentObserver
             'longitude' => (float) $incident->longitude,
             'status' => $incident->status,
             'time' => 'Just now',
+            'photo_path' => $incident->photo_path,
+            'video_path' => $incident->video_path,
+            'reporter_name' => $incident->reporter_name,
+            'contact_number' => $incident->contact_number,
+            'address' => $incident->address,
+            'description' => $incident->description,
+            'nearby_count' => $incident->findNearbyReports()->count(),
+            // Brand-new incident — never assigned or annotated yet, so
+            // these stay null rather than being omitted, matching the
+            // shape openIncident() in index.blade.php expects.
+            'assigned_to' => null,
+            'responder_notes' => null,
+
         ]));
 
         $this->notifyResponders($incident);
@@ -42,7 +55,10 @@ class IncidentObserver
                          'New Incident Reported',
                          "{$incident->type} in {$incident->barangay}"
                     ))
-                    ->withData(['incident_id' => (string) $incident->id]);
+                    ->withData([
+                        'incident_uuid' => $incident->uuid,
+                        'status' => $incident->status,
+                    ]);
 
                  $messaging->send($message);
             } catch (\Throwable $e) {

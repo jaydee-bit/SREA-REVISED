@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/incident_detail_screen.dart';
 import 'models/incident_report_model.dart';
 import 'services/api_service.dart';
+import 'services/incident_update_bus.dart';
 import 'widgets/notification_banner.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -22,10 +23,12 @@ void main() async {
   // Case 2: app is open right now, notification arrives
   FirebaseMessaging.onMessage.listen((message) {
     _showInAppBanner(message);
+    _broadcastIncidentUpdate(message);
   });
 
   // Case 3: app was backgrounded (not closed), user tapped the notification
   FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    _broadcastIncidentUpdate(message);
     _handleNotificationTap(message);
   });
 
@@ -33,17 +36,35 @@ void main() async {
 
   // Handle case 1 after runApp, so navigatorKey.currentState is ready
   if (initialMessage != null) {
+    _broadcastIncidentUpdate(initialMessage);
     _handleNotificationTap(initialMessage);
   }
 }
 
+// Lets any currently-open screen (an incidents list, a detail screen)
+// react immediately to a push — without this, the only way anything
+// updates is if the user happens to tap the system notification, which
+// misses the whole point of "no refresh needed" while the app is open.
+void _broadcastIncidentUpdate(RemoteMessage message) {
+  final uuid = message.data['incident_uuid'];
+  if (uuid == null) return;
+
+  IncidentUpdateBus.instance.notify(
+    incidentUuid: uuid,
+    status: message.data['status'],
+  );
+}
+
 void _handleNotificationTap(RemoteMessage message) async {
-  final incidentId = message.data['incident_id'];
-  if (incidentId == null) return;
+  // Bug fix: the backend sends `incident_uuid`, this was previously
+  // reading `incident_id` (which the backend never sends), so this
+  // whole handler was silently a no-op on every notification tap.
+  final incidentUuid = message.data['incident_uuid'];
+  if (incidentUuid == null) return;
 
   try {
     final api = ApiService();
-    final json = await api.getIncident(incidentId);
+    final json = await api.getIncident(incidentUuid);
     final incident = IncidentReport.fromJson(json);
 
     navigatorKey.currentState?.push(

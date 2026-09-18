@@ -104,6 +104,30 @@
     </div>
 </div>
 
+{{-- Request Assistance Modal --}}
+<div class="modal-backdrop-custom" id="assistanceModal">
+    <div class="modal-box">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h4 id="assistanceModalTitle">Request Assistance</h4>
+            <button class="btn-close" onclick="document.getElementById('assistanceModal').classList.remove('show')"></button>
+        </div>
+        <div id="assistanceIncidentContext" class="d-flex align-items-center gap-2 mb-3 p-2" style="background:#F7F8FA; border-radius:6px;"></div>
+        <div class="small text-muted mb-2">Which barangay should respond to this incident?</div>
+        <select id="assistanceTargetBarangay" class="form-select mb-2">
+            <option value="">Select a barangay…</option>
+            @foreach ($barangays as $barangay)
+                <option value="{{ $barangay }}">{{ $barangay }}</option>
+            @endforeach
+        </select>
+        <div id="assistanceError" class="text-danger small mb-2" style="display:none;"></div>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light" onclick="document.getElementById('assistanceModal').classList.remove('show')">Cancel</button>
+            <button class="btn" style="background:#4C5FD5; color:#fff;" onclick="confirmAssistanceRequest()">Send Request</button>
+        </div>
+    </div>
+</div>
+
+
 <div id="toast" style="display:none; position:fixed; bottom:24px; right:24px; z-index:2000; min-width:300px; padding:16px 20px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.2); color:#fff; font-weight:500;"></div>
 
 <script>
@@ -146,6 +170,7 @@
                 <td>${new Date(inc.reported_at).toLocaleString()}</td>
                 <td>
                     <button class="btn btn-sm btn-light" onclick="viewDescription(${inc.id})">View</button>
+                    ${inc.status === 'Pending' ? `<button class="btn btn-sm" style="background:#E7E9FB; color:#4C5FD5;" onclick="openAssistanceRequest(${inc.id})">🆘 Assistance</button>` : ''}
                     ${inc.status === 'Pending' ? `<button class="btn btn-sm" style="background:#F8D7DA; color:#B02A37;" onclick="openReject(${inc.id})">Reject</button>` : ''}
                 </td>
             </tr>
@@ -227,8 +252,34 @@
     function viewDescription(incidentId) {
         const inc = currentPageIncidents.find(i => i.id === incidentId);
         if (!inc) return;
-        document.getElementById('descModalTitle').textContent = `#${inc.id} — Description`;
-        document.getElementById('descModalBody').innerHTML = `<div class="small">${inc.description ?? 'No description available.'}</div>`;
+
+        document.getElementById('descModalTitle').textContent = `#${inc.id} — Incident Details`;
+
+        let mediaHtml = '';
+        if (inc.photo_path) {
+            mediaHtml = `<img src="${inc.photo_path}" style="width:100%; max-height:220px; object-fit:cover; border-radius:8px;" class="mb-3" alt="Reported photo">`;
+        } else if (inc.video_path) {
+            mediaHtml = `<video src="${inc.video_path}" controls style="width:100%; max-height:220px; border-radius:8px;" class="mb-3"></video>`;
+        }
+
+        const reporterName = inc.reporter_name ?? inc.reporter?.name ?? 'Anonymous';
+        const assignedHtml = inc.assigned_to
+            ? `<div class="small mb-1"><strong>Assigned responder:</strong> ${inc.assigned_to.name}</div>`
+            : '';
+
+        document.getElementById('descModalBody').innerHTML = `
+            <div class="mb-2 d-flex align-items-center gap-2">
+                <span class="badge badge-status-${inc.status}">${inc.status}</span>
+                <span class="text-muted small">${inc.type} · ${inc.barangay}</span>
+            </div>
+            ${mediaHtml}
+            <div class="small mb-3">${inc.description ?? 'No description available.'}</div>
+            <hr>
+            <div class="small mb-1"><strong>Reporter:</strong> ${reporterName}</div>
+            <div class="small mb-1"><strong>Contact:</strong> ${inc.contact_number ?? '-'}</div>
+            <div class="small mb-1"><strong>Reported at:</strong> ${new Date(inc.reported_at).toLocaleString()}</div>
+            ${assignedHtml}
+        `;
         document.getElementById('descriptionModal').classList.add('show');
     }
 
@@ -270,6 +321,66 @@
         .catch(() => {
             document.getElementById('rejectError').textContent = 'Something went wrong. Please try again.';
             document.getElementById('rejectError').style.display = 'block';
+        });
+    }
+
+    let assistanceTargetId = null;
+
+    function openAssistanceRequest(incidentId) {
+        assistanceTargetId = incidentId;
+        const inc = currentPageIncidents.find(i => i.id === incidentId);
+
+        document.getElementById('assistanceModalTitle').textContent = `Request Assistance — #${incidentId}`;
+        document.getElementById('assistanceError').style.display = 'none';
+
+        const contextEl = document.getElementById('assistanceIncidentContext');
+        contextEl.innerHTML = inc ? `
+            ${mediaThumb(inc)}
+            <div>
+                <div class="fw-bold small">${inc.type} — ${inc.barangay}</div>
+                <div class="text-muted small">This incident currently belongs to ${inc.barangay}.</div>
+            </div>
+        ` : '';
+
+        const select = document.getElementById('assistanceTargetBarangay');
+        select.value = '';
+        Array.from(select.options).forEach(opt => {
+            opt.disabled = !!(inc && opt.value === inc.barangay);
+        });
+
+        document.getElementById('assistanceModal').classList.add('show');
+    }
+
+    function confirmAssistanceRequest() {
+        const targetBarangay = document.getElementById('assistanceTargetBarangay').value;
+        const errorEl = document.getElementById('assistanceError');
+
+        if (!targetBarangay) {
+            errorEl.textContent = 'Please select a barangay.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        fetch(`/admin/incidents/${assistanceTargetId}/request-assistance`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ target_barangay: targetBarangay }),
+        })
+        .then(async res => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Something went wrong. Please try again.');
+            return data;
+        })
+        .then(() => {
+            document.getElementById('assistanceModal').classList.remove('show');
+            showToast(`Assistance requested for incident #${assistanceTargetId}.`);
+        })
+        .catch(err => {
+            errorEl.textContent = err.message;
+            errorEl.style.display = 'block';
         });
     }
 </script>

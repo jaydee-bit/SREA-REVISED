@@ -250,7 +250,7 @@
                 return;
             }
 
-            const ALL_TYPES = ['Fire', 'Medical', 'Flood', 'Accident', 'Calamity', 'Other'];
+            const ALL_TYPES = ['Fire', 'Medical', 'Maternal', 'Flood', 'Accident', 'Calamity', 'Other'];
             body.innerHTML = ALL_TYPES.map((type, i) => {
                 const count = counts[type] || 0;
                 const percent = total > 0 ? Math.round((count / total) * 100) : 0;

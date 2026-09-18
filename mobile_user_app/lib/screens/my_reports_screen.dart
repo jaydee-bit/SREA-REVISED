@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:srea_shared/srea_shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/incident_report_model.dart';
 import '../services/api_service.dart';
+import '../services/incident_update_bus.dart';
 import 'incident_report_detail_screen.dart';
 
 class MyReportsScreen extends StatefulWidget {
@@ -17,11 +19,28 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
   bool _isLoading = true;
   String? _error;
   int _currentTabIndex = 0; // 0: Active, 1: Resolved
+  StreamSubscription<IncidentUpdate>? _updateSub;
 
   @override
   void initState() {
     super.initState();
     _loadReports();
+
+    // A push arriving while this screen is open means one of the user's
+    // own reports changed status (accepted/resolved/rejected/escalated).
+    // We don't try to match which specific report it was — just refetch
+    // the whole (short) list, same as pull-to-refresh does, so the badge
+    // colors update without the user having to do anything.
+    _updateSub = IncidentUpdateBus.instance.stream.listen((update) {
+      print('📥 MY REPORTS RECEIVED: uuid=${update.incidentUuid} status=${update.status} — refetching list');
+      _loadReports();
+    });
+  }
+
+  @override
+  void dispose() {
+    _updateSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadReports() async {

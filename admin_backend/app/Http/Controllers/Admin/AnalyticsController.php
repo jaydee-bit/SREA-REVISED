@@ -9,7 +9,13 @@ class AnalyticsController extends Controller
 {
     public function index()
     {
-        $allIncidents = Incident::all();
+        $query = Incident::query();
+
+        if (!backpack_user()->isSuperAdmin()) {
+            $query->where('barangay', backpack_user()->barangay);
+        }
+
+        $allIncidents = $query->get();
 
         // Median response time (Pending -> Resolved), only from resolved incidents.
         // Median instead of mean so a single stuck/delayed incident can't blow out

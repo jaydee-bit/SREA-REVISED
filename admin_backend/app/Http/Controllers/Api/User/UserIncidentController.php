@@ -26,6 +26,10 @@ class UserIncidentController extends Controller
             // Kept nullable so anonymous submissions still work.
             'reporter_name'    => 'nullable|string|max:255',
             'contact_number'   => 'nullable|string|max:20',
+            // Captured at submission time so status-change pushes have
+            // somewhere to go — this report has no user_id, so there's
+            // no user relation to pull a device token from later.
+            'fcm_token'        => 'nullable|string',
         ]);
 
         $incident = Incident::create([
@@ -43,6 +47,7 @@ class UserIncidentController extends Controller
             // display "Reported by" and "Contact" instead of Anonymous.
             'reporter_name'    => $validated['reporter_name'] ?? null,
             'contact_number'   => $validated['contact_number'] ?? null,
+            'reporter_fcm_token' => $validated['fcm_token'] ?? null,
             'status'           => 'Pending',
             'reported_at'      => now(),
         ]);

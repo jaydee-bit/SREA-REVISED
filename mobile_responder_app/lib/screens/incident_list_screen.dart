@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:srea_shared/srea_shared.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/incident_report_model.dart';
 import 'incident_detail_screen.dart';
 import '../services/api_service.dart';
+import '../services/incident_update_bus.dart';
 
 class IncidentListScreen extends StatelessWidget {
   final String? initialFilter;
@@ -38,6 +40,7 @@ class _IncidentListBodyState extends State<_IncidentListBody> {
   String? _error;
   String _filterStatus = 'Active';
   String? _filterBarangay;
+  StreamSubscription<IncidentUpdate>? _updateSub;
 
   final List<String> _statusOptions = [
     'Active',
@@ -45,7 +48,7 @@ class _IncidentListBodyState extends State<_IncidentListBody> {
     'Responding',
     'Resolved',
     'Rejected',
-    'Escalated'
+    'Escalated',
   ];
 
   final List<String> _barangayOptions = [
@@ -92,6 +95,22 @@ class _IncidentListBodyState extends State<_IncidentListBody> {
     _loadIncidents();
     if (widget.initialFilter == 'active') _filterStatus = 'Active';
     if (widget.initialFilter == 'resolved') _filterStatus = 'Resolved';
+
+    // A new admin dispatch, a responder accepting elsewhere, or a
+    // resolve/reject anywhere all fire a push. Rather than only reacting
+    // when THIS device is the one that got assigned, refetch on any
+    // incident update — so a new Pending incident appearing, or one
+    // disappearing because someone else just took it, shows up live
+    // instead of looking stale until a manual pull-to-refresh.
+    _updateSub = IncidentUpdateBus.instance.stream.listen((_) {
+      _loadIncidents();
+    });
+  }
+
+  @override
+  void dispose() {
+    _updateSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadIncidents() async {

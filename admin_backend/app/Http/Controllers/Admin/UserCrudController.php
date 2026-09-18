@@ -31,6 +31,17 @@ class UserCrudController extends CrudController
      */
     public function setup()
     {
+        // Staff account management is municipality-wide, not scoped to
+        // one barangay — unlike Incidents/Analytics/etc., there's no
+        // sensible "your own slice" of this to show a barangay admin.
+        // Blocking it here (not just hiding the sidebar link) means
+        // typing /admin/user directly doesn't bypass anything either —
+        // every operation (list, create, update, delete, show) routes
+        // through this setup() first.
+        if (!backpack_user()->isSuperAdmin()) {
+            abort(403, 'Unauthorized. Staff account management is municipality-wide and restricted to super admins.');
+        }
+
         CRUD::setModel(\App\Models\User::class);
         CRUD::setRoute(config('backpack.base.route_prefix') . '/user');
         CRUD::setEntityNameStrings('staff account', 'staff accounts');
@@ -66,49 +77,151 @@ class UserCrudController extends CrudController
      * @return void
      */
     protected function setupCreateOperation()
-{
-    CRUD::setValidation(UserRequest::class);
+    {
+        CRUD::setValidation(UserRequest::class);
+        CRUD::setFromDb(); // set fields from db columns.
 
-    CRUD::field('name')
-        ->type('text')
-        ->wrapper(['class' => 'form-group col-md-6']);
+        // These belong to a resident's profile, not a staff account — a
+        // staff member (Admin/Responder) is created by another admin here,
+        // not self-registered, so there's no ID-verification step to
+        // capture for them. Names guessed from your DB columns; if any of
+        // these don't match your actual column names, let me know and
+        // I'll correct them.
+        CRUD::removeFields([
+            'birth_date',
+            'profile_image',
+            'street',
+            'province',
+            'municipality',
+            'valid_id_type',
+            'valid_id_photo',
+        ]);
 
-    CRUD::field('email')
-        ->type('email')
-        ->wrapper(['class' => 'form-group col-md-6']);
+        // Lay every remaining field out two-per-row instead of the default
+        // full-width stack. File/image/textarea fields are left alone since
+        // squeezing those into half-width usually looks worse, not better.
+        foreach (CRUD::fields() as $field) {
+            if (in_array($field['type'], ['textarea', 'wysiwyg', 'upload', 'upload_multiple', 'image'])) {
+                continue;
+            }
 
-    CRUD::field('password')
-        ->type('password')
-        ->hint('Leave blank to keep the current password (when editing).')
-        ->wrapper(['class' => 'form-group col-md-6']);
+            CRUD::modifyField($field['name'], [
+                'wrapper' => array_merge($field['wrapper'] ?? [], ['class' => 'form-group col-md-6']),
+            ]);
+        }
 
-    CRUD::field('phone')
-        ->type('text')
-        ->wrapper(['class' => 'form-group col-md-6']);
+        CRUD::modifyField('role', [
+            'type' => 'select_from_array',
+            'options' => ['admin' => 'Admin', 'responder' => 'Responder'],
+            'allows_null' => false,
+            'attributes' => ['id' => 'field_role'],
+            'wrapper' => ['class' => 'form-group col-md-6'],
+        ]);
 
-    CRUD::field('role')
-        ->type('select_from_array')
-        ->options(['admin' => 'Admin', 'responder' => 'Responder'])
-        ->allows_null(false)
-        ->wrapper(['class' => 'form-group col-md-6']);
+        // Same reasoning as the role field above — a barangay admin's
+        // entire scoping (Incidents, Response Monitor, Live Map, Analytics,
+        // Audit Trail, assistance requests) depends on this string exactly
+        // matching a real Barangay row. A free-text field risks a typo or
+        // stray space silently breaking that admin's access with no error
+        // anywhere pointing to why.
+        CRUD::modifyField('barangay', [
+            'type' => 'select_from_array',
+            'options' => \App\Models\Barangay::orderBy('name')->pluck('name', 'name')->toArray(),
+            'allows_null' => true,
+            'hint' => 'Required for a barangay-scoped Admin, or a Responder assigned to a specific barangay. Leave blank for a Super Admin or a municipality-wide responder.',
+            'wrapper' => ['id' => 'wrapper_barangay', 'class' => 'form-group col-md-6'],
+        ]);
 
-    CRUD::field('barangay')
-        ->type('text')
-        ->hint('The barangay this staff member is primarily assigned to.')
-        ->wrapper(['class' => 'form-group col-md-6']);
+        CRUD::modifyField('is_super_admin', [
+            'label' => 'Super Admin',
+            'type' => 'checkbox',
+            'hint' => 'Grants access to every barangay\'s data and Staff Accounts. Leave unchecked for a barangay-scoped Admin.',
+            'attributes' => ['id' => 'field_is_super_admin'],
+            'wrapper' => ['id' => 'wrapper_is_super_admin', 'class' => 'form-group col-md-6'],
+        ]);
 
-    CRUD::field('responder_team')
-        ->type('text')
-        ->label('Team')
-        ->hint('Only used when Role is Responder.')
-        ->wrapper(['class' => 'form-group col-md-6']);
+        // Gender only matters for a Responder — it's used on the Live Map
+        // / dispatch side, not for an Admin account, so it's hidden by
+        // the same Role toggle as Team/Vehicle below rather than always
+        // showing regardless of role.
+        CRUD::modifyField('gender', [
+            'wrapper' => ['id' => 'wrapper_gender', 'class' => 'form-group col-md-6'],
+        ]);
 
-    CRUD::field('responder_vehicle')
-        ->type('text')
-        ->label('Vehicle')
-        ->hint('Only used when Role is Responder.')
-        ->wrapper(['class' => 'form-group col-md-6']);
-}
+        // These two don't live on the `users` table — they belong to
+        // responder_profiles. They're virtual form fields only; store()
+        // and update() below pull them out of the request before Backpack
+        // tries to save them onto the User model, and write them to the
+        // ResponderProfile instead.
+        CRUD::addField([
+            'name' => 'responder_team',
+            'label' => 'Team',
+            'type' => 'text',
+            'hint' => 'Only used when Role is Responder.',
+            'wrapper' => ['id' => 'wrapper_responder_team', 'class' => 'form-group col-md-6'],
+        ]);
+
+        CRUD::addField([
+            'name' => 'responder_vehicle',
+            'label' => 'Vehicle',
+            'type' => 'text',
+            'hint' => 'Only used when Role is Responder.',
+            'wrapper' => ['id' => 'wrapper_responder_vehicle', 'class' => 'form-group col-md-6'],
+        ]);
+
+        // Show/hide Team, Vehicle, Super Admin, and Barangay based on the
+        // selected Role (and, once Role = Admin, whether Super Admin is
+        // checked) so the form only ever shows fields that are actually
+        // relevant to the account being created. Re-runs on every change
+        // of either control, and once on load so an edit form reflects the
+        // entry's existing values immediately.
+        CRUD::addField([
+            'name' => 'staff_form_toggle_script',
+            'type' => 'custom_html',
+            'value' => '
+                <script>
+                    function sreaToggleStaffFormFields() {
+                        var roleField = document.getElementById("field_role");
+                        var superAdminField = document.getElementById("field_is_super_admin");
+                        if (!roleField) return;
+
+                        var isResponder = roleField.value === "responder";
+                        var isSuperAdmin = superAdminField ? superAdminField.checked : false;
+
+                        var teamWrapper = document.getElementById("wrapper_responder_team");
+                        var vehicleWrapper = document.getElementById("wrapper_responder_vehicle");
+                        var genderWrapper = document.getElementById("wrapper_gender");
+                        var superAdminWrapper = document.getElementById("wrapper_is_super_admin");
+                        var barangayWrapper = document.getElementById("wrapper_barangay");
+
+                        if (teamWrapper) teamWrapper.style.display = isResponder ? "" : "none";
+                        if (vehicleWrapper) vehicleWrapper.style.display = isResponder ? "" : "none";
+                        if (genderWrapper) genderWrapper.style.display = isResponder ? "" : "none";
+
+                        // Only an Admin can be a Super Admin — a Responder never is.
+                        if (superAdminWrapper) superAdminWrapper.style.display = isResponder ? "none" : "";
+                        if (isResponder && superAdminField) superAdminField.checked = false;
+
+                        // Barangay is meaningless once Super Admin is checked.
+                        if (barangayWrapper) barangayWrapper.style.display = (isSuperAdmin && !isResponder) ? "none" : "";
+                    }
+
+                    document.addEventListener("DOMContentLoaded", function () {
+                        sreaToggleStaffFormFields();
+                        var roleField = document.getElementById("field_role");
+                        var superAdminField = document.getElementById("field_is_super_admin");
+                        if (roleField) roleField.addEventListener("change", sreaToggleStaffFormFields);
+                        if (superAdminField) superAdminField.addEventListener("change", sreaToggleStaffFormFields);
+                    });
+                </script>
+            ',
+        ]);
+
+        /**
+         * Fields can be defined using the fluent syntax:
+         * - CRUD::field('price')->type('number');
+         */
+    }
 
     /**
      * Define what happens when the Update operation is loaded.

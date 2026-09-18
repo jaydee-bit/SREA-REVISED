@@ -312,7 +312,7 @@
         "resolved_at": "2026-01-07 10:30:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 Maternal Emergency report (MDRRMO monthly accomplishment log, January 2026)",
         "barangay": "Poblacion",
         "location_details": "Ace Hospital",
@@ -2376,7 +2376,7 @@
         "resolved_at": "2026-02-24 18:14:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 Maternal Emergency report (MDRRMO monthly accomplishment log, February 2026)",
         "barangay": "Sampaloc",
         "location_details": null,
@@ -5484,7 +5484,7 @@
         "resolved_at": "2026-05-19 10:36:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 May 2026",
         "barangay": "Tambubong",
         "location_details": null,
@@ -5604,7 +5604,7 @@
         "resolved_at": "2026-05-22 13:54:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 May 2026",
         "barangay": "Tambubong",
         "location_details": null,
@@ -6180,7 +6180,7 @@
         "resolved_at": "2026-06-08 13:55:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 June 2026",
         "barangay": "Banca-Banca",
         "location_details": null,
@@ -6492,7 +6492,7 @@
         "resolved_at": "2026-06-20 18:23:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 June 2026",
         "barangay": "Cruz na Daan",
         "location_details": null,
@@ -6972,7 +6972,7 @@
         "resolved_at": "2026-07-06 18:14:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 July 2026",
         "barangay": "Mabalas-Balas",
         "location_details": null,
@@ -7248,7 +7248,7 @@
         "resolved_at": "2026-07-17 15:32:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 July 2026",
         "barangay": "Poblacion",
         "location_details": "Baliuag",
@@ -7860,7 +7860,7 @@
         "resolved_at": "2026-08-06 22:22:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 August 2026",
         "barangay": "Cruz na Daan",
         "location_details": null,
@@ -8124,7 +8124,7 @@
         "resolved_at": "2026-08-17 18:17:00"
     },
     {
-        "type": "Medical",
+        "type": "Maternal",
         "description": "Maternal Emergency report (MDRRMO monthly accomplishment log) \u2014 August 2026",
         "barangay": "Poblacion",
         "location_details": "Baliuag",

@@ -6,6 +6,7 @@ import 'screens/home_screen.dart';
 import 'screens/alert_detail_screen.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'services/incident_update_bus.dart';
 import 'widgets/notification_banner.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -21,13 +22,16 @@ void main() async {
 
   // Case 2: app is open right now, notification arrives
   FirebaseMessaging.onMessage.listen((message) {
+    print('🔔 ONMESSAGE FIRED: ${message.data}');
     _addPushToNotificationList(message);
     _showInAppBanner(message);
+    _broadcastIncidentUpdate(message);
   });
 
   // Case 3: app was backgrounded (not closed), user taps the notification
   FirebaseMessaging.onMessageOpenedApp.listen((message) {
     _addPushToNotificationList(message);
+    _broadcastIncidentUpdate(message);
     _navigateToAlert(message);
   });
 
@@ -36,11 +40,36 @@ void main() async {
   // Handle case 1 after runApp, so navigatorKey.currentState is ready
   if (initialMessage != null) {
     _addPushToNotificationList(initialMessage);
+    _broadcastIncidentUpdate(initialMessage);
     _navigateToAlert(initialMessage);
   }
 }
 
+// This app already has an alert-push path (alert_id/advisory_id). Incident
+// status pushes (from IncidentController/ResponseMonitorController on the
+// backend) are a separate thing — they carry incident_uuid/status instead,
+// so My Reports (or wherever the reporter tracks their own report) can
+// react live without needing this data forced through the alert pipeline.
+void _broadcastIncidentUpdate(RemoteMessage message) {
+  final uuid = message.data['incident_uuid'];
+  if (uuid == null) {
+    print('⚠️ BROADCAST SKIPPED: no incident_uuid in message.data');
+    return;
+  }
+
+  print('📡 BROADCASTING TO BUS: uuid=$uuid status=${message.data['status']}');
+  IncidentUpdateBus.instance.notify(
+    incidentUuid: uuid,
+    status: message.data['status'],
+  );
+}
+
 void _addPushToNotificationList(RemoteMessage message) {
+  // Incident-status pushes aren't "alerts" — don't file them into the
+  // same alert/advisory notification list, which is a separate concern
+  // (community alerts vs. this reporter's own report status).
+  if (message.data['incident_uuid'] != null) return;
+
   final id =
       message.data['alert_id'] ??
       message.data['advisory_id'] ??

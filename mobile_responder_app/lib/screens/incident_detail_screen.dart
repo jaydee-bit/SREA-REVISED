@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:srea_shared/srea_shared.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -7,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../models/incident_report_model.dart';
 import '../services/api_service.dart';
+import '../services/incident_update_bus.dart';
 
 // ─── Incident Type Constants ──────────────────────────────────────────
 const List<String> incidentTypes = [
@@ -33,6 +35,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
   bool _isUpdating = false;
   String _currentUserRole = 'responder';
   String _currentUserId = '';
+  StreamSubscription<IncidentUpdate>? _incidentUpdateSub;
 
   // ─── Video Controller ──────────────────────────────────────────
   VideoPlayerController? _videoController;
@@ -149,10 +152,43 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
     );
     _fetchUserRoleAndId();
     _initializeVideo();
+
+    // Live-update this screen if someone else (an admin on the web side,
+    // or another responder) changes this same incident while it's open
+    // here — e.g. admin resolves/rejects/reassigns it, or dispatches a
+    // different responder. Without this, the screen just sits stale
+    // until the user backs out and reopens it.
+    _incidentUpdateSub = IncidentUpdateBus.instance.stream.listen((update) {
+      if (update.incidentUuid == _incident.id) {
+        _refreshIncident();
+      }
+    });
+  }
+
+  Future<void> _refreshIncident() async {
+    try {
+      final json = await ApiService().getIncident(_incident.id);
+      final refreshed = IncidentReport.fromJson(json);
+      if (mounted) {
+        setState(() {
+          _incident = refreshed;
+          // Don't clobber notes the responder is actively typing with
+          // whatever's stored server-side — only sync it in if this
+          // screen hasn't been edited locally yet.
+          if (_notesController.text.isEmpty) {
+            _notesController.text = refreshed.responderNotes ?? '';
+          }
+        });
+      }
+    } catch (e) {
+      // Fetch failed (e.g. incident deleted, network hiccup) — fail
+      // quietly rather than disrupt whoever's looking at this screen.
+    }
   }
 
   @override
   void dispose() {
+    _incidentUpdateSub?.cancel();
     _notesController.dispose();
     _videoController?.dispose();
     super.dispose();

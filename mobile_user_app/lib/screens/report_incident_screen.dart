@@ -8,6 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/incident_report_model.dart';
 import '../services/api_service.dart';
 import 'incident_report_detail_screen.dart';
@@ -1551,7 +1552,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     }
     final phRegex = RegExp(r'^09\d{9}$');
     if (!phRegex.hasMatch(cleaned)) {
-      return 'Must start with 09 (e.g. 09171234567)';
+      return 'Must start with 09 (e.g. 09*********)';
     }
     return null;
   }
@@ -1605,7 +1606,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       await prefs.setInt('report_count_today', 0);
       return true;
     }
-    return count < 20;
+    return count < 100;
   }
 
   Future<void> _incrementReportCount() async {
@@ -1676,6 +1677,19 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
       final barangay = _detectedBarangay ?? '';
 
+      // Captured now, not read from wherever registerDeviceToken() stored
+      // it — getToken() is cheap (returns the cached token instantly if
+      // one already exists) and this guarantees we send whatever token is
+      // valid right now, rather than a possibly-stale copy.
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        // No token is not fatal — the report still submits, it just won't
+        // be able to receive a live status-change push later.
+        fcmToken = null;
+      }
+
       final Map<String, dynamic> requestData = {
         'reporter_name': _nameController.text.trim(),
         'contact_number': _contactController.text.trim(),
@@ -1685,6 +1699,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         'barangay': barangay,
         'reporter_image': reporterImagePath,
         'reporter_video': reporterVideoPath,
+        'fcm_token': fcmToken,
       };
 
       final newIncident = await api.createEmergencyReport(requestData);

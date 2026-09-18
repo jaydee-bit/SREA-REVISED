@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ─── Emergency Call with Confirmation ──────────────────────────────
   Future<void> _makeEmergencyCall() async {
-    const String hotline = '09171234567';
+    const String hotline = '09151329716';
 
     final bool? confirm = await showDialog<bool>(
       context: context,

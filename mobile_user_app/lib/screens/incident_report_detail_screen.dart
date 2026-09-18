@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:srea_shared/srea_shared.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../models/incident_report_model.dart';
 import '../services/api_service.dart';
+import '../services/incident_update_bus.dart';
 
 class IncidentReportDetailScreen extends StatefulWidget {
   final IncidentReport report;
@@ -22,9 +24,29 @@ class _IncidentReportDetailScreenState
   VideoPlayerController? _videoController;
   bool _videoFailedToLoad = false;
 
+  // Mutable copy of the status so a live push can update it without
+  // needing widget.report itself to be replaced or the screen reopened.
+  late String _currentStatus;
+  StreamSubscription<IncidentUpdate>? _incidentUpdateSub;
+
   @override
   void initState() {
     super.initState();
+    _currentStatus = widget.report.status;
+
+    _incidentUpdateSub = IncidentUpdateBus.instance.stream.listen((update) {
+      print(
+        '📥 DETAIL SCREEN RECEIVED: update.uuid=${update.incidentUuid} vs widget.report.id=${widget.report.id} (match=${update.incidentUuid == widget.report.id})',
+      );
+      if (update.incidentUuid == widget.report.id && update.status != null) {
+        if (mounted) {
+          setState(() {
+            _currentStatus = update.status!;
+          });
+        }
+      }
+    });
+
     final videoPath = widget.report.videoPath;
     print('📹 Video path: $videoPath');
     if (videoPath != null && videoPath.isNotEmpty) {
@@ -49,6 +71,7 @@ class _IncidentReportDetailScreenState
 
   @override
   void dispose() {
+    _incidentUpdateSub?.cancel();
     _videoController?.dispose();
     super.dispose();
   }
@@ -150,8 +173,8 @@ class _IncidentReportDetailScreenState
   @override
   Widget build(BuildContext context) {
     final report = widget.report;
-    final statusColor = _getStatusColor(report.status);
-    final statusLabel = _getStatusLabel(report.status);
+    final statusColor = _getStatusColor(_currentStatus);
+    final statusLabel = _getStatusLabel(_currentStatus);
 
     final bool isClassified =
         report.type != 'Emergency' &&
@@ -308,7 +331,7 @@ class _IncidentReportDetailScreenState
             ],
 
             // ─── Escalation Banner ──────────────────────────────────────
-            if (report.status.toLowerCase() == 'escalated') ...[
+            if (_currentStatus.toLowerCase() == 'escalated') ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 12),
@@ -364,8 +387,8 @@ class _IncidentReportDetailScreenState
 
             // ─── Duplicate Banner ──────────────────────────────────────
             if (report.isPotentialDuplicate &&
-                report.status.toLowerCase() != 'resolved' &&
-                report.status.toLowerCase() != 'rejected')
+                _currentStatus.toLowerCase() != 'resolved' &&
+                _currentStatus.toLowerCase() != 'rejected')
               Container(
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 12),
@@ -894,12 +917,12 @@ class _IncidentReportDetailScreenState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: report.status.toLowerCase() == 'rejected'
+                  color: _currentStatus.toLowerCase() == 'rejected'
                       ? SreaColors.error.withOpacity(0.08)
                       : SreaColors.success.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: report.status.toLowerCase() == 'rejected'
+                    color: _currentStatus.toLowerCase() == 'rejected'
                         ? SreaColors.error.withOpacity(0.3)
                         : SreaColors.success.withOpacity(0.3),
                   ),

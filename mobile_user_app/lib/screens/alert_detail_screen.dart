@@ -169,7 +169,7 @@ class AlertDetailScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '(044) 123-4567',
+                            '0915 132 9716',
                             style: SreaText.label(
                               context,
                             ).copyWith(color: SreaColors.primary),

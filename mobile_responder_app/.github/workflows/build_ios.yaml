@@ -1,0 +1,12 @@
+      - name: Package as .ipa
+        run: |
+          mkdir -p Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r mobile_responder_app_debug.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile_responder_app-debug-ipa
+          path: mobile_responder_app_debug.ipa
+          retention-days: 30

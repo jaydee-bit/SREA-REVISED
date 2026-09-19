@@ -6,7 +6,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:cross_file/cross_file.dart';
 
 class ApiService {
-  static const String baseImageUrl = 'https://sreaadmin.ccwu.cc';
+  static const String baseImageUrl = 'http://localhost:8080';
   static const String baseUrl = '$baseImageUrl/api';
 
   final Dio _dio = Dio(
